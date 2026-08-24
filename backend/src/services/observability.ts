@@ -205,7 +205,8 @@ export class ObservabilityService {
     return message
       .replace(/(?:AIzaSy|AQ\.)[A-Za-z0-9._-]{30,70}/g, '***REDACTED_API_KEY***')
       .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer ***REDACTED***')
-      .replace(/password\s*[:=]?\s*["'][^"']+["']/gi, 'password:"***REDACTED***"')
+      .replace(/password\s*[:=]?\s*["']?[^"\s,;]+["']?/gi, 'password:***REDACTED***')
+      .replace(/token\s*[:=]?\s*[a-f0-9]{32,64}/gi, 'token:***REDACTED***')
       .replace(/postgres:\/\/[^:]+:[^@]+@/gi, 'postgres://***:***@');
   }
 }

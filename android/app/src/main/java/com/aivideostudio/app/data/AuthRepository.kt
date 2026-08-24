@@ -68,6 +68,32 @@ class AuthRepository(
         }
     }
 
+    suspend fun forgotPassword(email: String): NetworkResult<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.forgotPassword(mapOf("email" to email))
+            if (response.isSuccessful && response.body() != null) {
+                NetworkResult.Success(response.body()!!.message)
+            } else {
+                parseError(response.errorBody()?.string())
+            }
+        } catch (e: Exception) {
+            NetworkResult.NetworkFailure(e)
+        }
+    }
+
+    suspend fun resetPassword(token: String, newPassword: String): NetworkResult<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.resetPassword(mapOf("token" to token, "newPassword" to newPassword))
+            if (response.isSuccessful && response.body() != null) {
+                NetworkResult.Success(response.body()!!.message)
+            } else {
+                parseError(response.errorBody()?.string())
+            }
+        } catch (e: Exception) {
+            NetworkResult.NetworkFailure(e)
+        }
+    }
+
     fun getCachedUser(): UserDto? = sessionManager.getUser()
 
     fun isLoggedIn(): Boolean = sessionManager.isLoggedIn()

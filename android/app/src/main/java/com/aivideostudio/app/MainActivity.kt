@@ -23,6 +23,17 @@ class MainActivity : ComponentActivity() {
                     color = BackgroundDark
                 ) {
                     val navController = rememberNavController()
+                    
+                    androidx.compose.runtime.LaunchedEffect(Unit) {
+                        val uri = intent?.data
+                        if (uri != null && (uri.path?.contains("reset-password") == true || uri.host == "reset-password")) {
+                            val token = uri.getQueryParameter("token")
+                            if (!token.isNullOrBlank()) {
+                                navController.navigate("reset_password/$token")
+                            }
+                        }
+                    }
+
                     AppNavHost(navController = navController)
                 }
             }

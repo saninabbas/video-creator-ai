@@ -15,4 +15,8 @@ sealed class Screen(val route: String) {
     }
     object MyVideos : Screen("my_videos")
     object Settings : Screen("settings")
+    object ForgotPassword : Screen("forgot_password")
+    object ResetPassword : Screen("reset_password/{token}") {
+        fun createRoute(token: String) = "reset_password/$token"
+    }
 }

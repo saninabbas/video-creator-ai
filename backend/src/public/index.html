@@ -71,7 +71,10 @@
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-secondary mb-1.5">Password</label>
+          <div class="flex justify-between items-center mb-1.5">
+            <label class="block text-xs font-medium text-secondary">Password</label>
+            <button type="button" onclick="openForgotPasswordModal()" id="link-forgot-pwd" class="text-xs text-violet-400 hover:text-violet-300">Forgot password?</button>
+          </div>
           <input id="input-password" type="password" required placeholder="••••••••" class="w-full bg-[#0B0C0F] border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500" />
         </div>
 
@@ -84,6 +87,35 @@
         <button id="auth-toggle-btn" onclick="toggleAuthMode()" class="text-xs text-violet-400 hover:text-violet-300 font-medium">
           New creator? Create an account (50 Signup Credits)
         </button>
+      </div>
+    </div>
+
+    <!-- FORGOT PASSWORD MODAL -->
+    <div id="modal-forgot-pwd" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+      <div class="surface border border-custom max-w-md w-full rounded-2xl p-6 shadow-2xl space-y-4 relative">
+        <button onclick="closeForgotPasswordModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <h3 class="text-lg font-bold text-white">Forgot your password?</h3>
+        <p class="text-xs text-secondary">Enter your email and we'll send you a secure password reset link.</p>
+
+        <div id="forgot-alert" class="hidden p-3 rounded-xl text-xs"></div>
+
+        <form id="forgot-form" onsubmit="handleForgotPassword(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-secondary mb-1.5">Email Address</label>
+            <input id="forgot-email" type="email" required placeholder="creator@example.com" class="w-full bg-[#0B0C0F] border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500" />
+          </div>
+          <button type="submit" id="btn-forgot-submit" class="w-full brand-gradient text-white font-bold py-3 rounded-xl text-xs hover:opacity-95 transition">
+            Send Reset Link
+          </button>
+        </form>
+
+        <div class="text-center pt-2">
+          <button onclick="closeForgotPasswordModal()" class="text-xs text-secondary hover:text-white">
+            Remember your password? Log in
+          </button>
+        </div>
       </div>
     </div>
 
@@ -368,6 +400,45 @@
       localStorage.removeItem('auth_token');
       authToken = null;
       showAuth();
+    }
+
+    function openForgotPasswordModal() {
+      document.getElementById('modal-forgot-pwd').classList.remove('hidden');
+      document.getElementById('forgot-alert').classList.add('hidden');
+      document.getElementById('forgot-email').value = '';
+    }
+
+    function closeForgotPasswordModal() {
+      document.getElementById('modal-forgot-pwd').classList.add('hidden');
+    }
+
+    async function handleForgotPassword(e) {
+      e.preventDefault();
+      const email = document.getElementById('forgot-email').value.trim();
+      const alertBox = document.getElementById('forgot-alert');
+      const btn = document.getElementById('btn-forgot-submit');
+      
+      btn.innerText = 'Sending link...';
+      btn.disabled = true;
+
+      try {
+        const res = await apiRequest('/api/auth/forgot-password', {
+          method: 'POST',
+          body: JSON.stringify({ email })
+        });
+        
+        alertBox.innerText = res.message || 'If an account exists for this email, a password reset link has been sent.';
+        alertBox.className = 'p-3.5 rounded-xl text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-400';
+        alertBox.classList.remove('hidden');
+        document.getElementById('forgot-form').classList.add('hidden');
+      } catch (err) {
+        alertBox.innerText = 'Unable to send reset email. Please try again.';
+        alertBox.className = 'p-3.5 rounded-xl text-xs bg-red-500/10 border border-red-500/30 text-red-400';
+        alertBox.classList.remove('hidden');
+      } finally {
+        btn.innerText = 'Send Reset Link';
+        btn.disabled = false;
+      }
     }
 
     function openCreditModal() {

@@ -16,6 +16,12 @@ interface ApiService {
     @POST("api/auth/logout")
     suspend fun logout(): Response<SimpleMessageResponse>
 
+    @POST("api/auth/forgot-password")
+    suspend fun forgotPassword(@Body body: Map<String, String>): Response<SimpleMessageResponse>
+
+    @POST("api/auth/reset-password")
+    suspend fun resetPassword(@Body body: Map<String, String>): Response<SimpleMessageResponse>
+
     @GET("api/auth/me")
     suspend fun getProfile(): Response<UserProfileResponse>
 

@@ -30,16 +30,17 @@ export class AuthService {
    * Registers a new user, hashes password, grants 50 welcome credits, and generates a session.
    */
   public async register(input: RegisterInput): Promise<AuthResult> {
-    const existing = await userService.getUserByEmail(input.email);
+    const normalizedEmail = input.email.toLowerCase().trim();
+    const existing = await userService.getUserByEmail(normalizedEmail);
     if (existing) {
       throw new Error('EMAIL_EXISTS: An account with this email address already exists.');
     }
 
     const passwordHash = await hashPassword(input.password);
     const user = await userService.createUser({
-      email: input.email,
+      email: normalizedEmail,
       passwordHash,
-      name: input.name,
+      name: input.name.trim(),
     });
 
     // Initialize 50 free credits
@@ -64,7 +65,8 @@ export class AuthService {
    * Authenticates user via email and password, returning a new session token.
    */
   public async login(input: LoginInput): Promise<AuthResult> {
-    const user = await userService.getUserByEmail(input.email);
+    const normalizedEmail = input.email.toLowerCase().trim();
+    const user = await userService.getUserByEmail(normalizedEmail);
     if (!user) {
       throw new Error('INVALID_CREDENTIALS: Incorrect email or password.');
     }

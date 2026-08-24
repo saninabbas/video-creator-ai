@@ -6,8 +6,10 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.aivideostudio.app.ui.screens.auth.ForgotPasswordScreen
 import com.aivideostudio.app.ui.screens.auth.LoginScreen
 import com.aivideostudio.app.ui.screens.auth.RegisterScreen
+import com.aivideostudio.app.ui.screens.auth.ResetPasswordScreen
 import com.aivideostudio.app.ui.screens.create.CreateLongScreen
 import com.aivideostudio.app.ui.screens.create.CreateShortScreen
 import com.aivideostudio.app.ui.screens.home.HomeScreen
@@ -49,6 +51,32 @@ fun AppNavHost(navController: NavHostController) {
                 },
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
+                },
+                onNavigateToForgotPassword = {
+                    navController.navigate(Screen.ForgotPassword.route)
+                }
+            )
+        }
+
+        // 2b. Forgot Password Screen
+        composable(Screen.ForgotPassword.route) {
+            ForgotPasswordScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // 2c. Reset Password Screen
+        composable(
+            route = Screen.ResetPassword.route,
+            arguments = listOf(navArgument("token") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val token = backStackEntry.arguments?.getString("token") ?: ""
+            ResetPasswordScreen(
+                token = token,
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.ResetPassword.route) { inclusive = true }
+                    }
                 }
             )
         }

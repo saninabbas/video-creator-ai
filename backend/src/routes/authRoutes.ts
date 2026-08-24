@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authService } from '../services/authService.js';
+import { passwordResetService } from '../services/passwordResetService.js';
 import { requireAuth } from '../middleware/authMiddleware.js';
-import { authLimiter } from '../security/rateLimiter.js';
+import { authLimiter, passwordResetLimiter } from '../security/rateLimiter.js';
 
 export const authRouter = Router();
 
@@ -128,6 +129,83 @@ authRouter.get('/me', requireAuth, async (req: Request, res: Response) => {
       error: {
         code: 'PROFILE_ERROR',
         message: 'Could not retrieve profile.',
+      },
+    });
+  }
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Please enter a valid email address.'),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(10, 'Reset token is required.'),
+  newPassword: z.string().min(8, 'New password must be at least 8 characters long.'),
+});
+
+/**
+ * POST /api/auth/forgot-password
+ */
+authRouter.post('/forgot-password', passwordResetLimiter.emailMiddleware(3, 15 * 60 * 1000), async (req: Request, res: Response) => {
+  try {
+    const validated = forgotPasswordSchema.parse(req.body);
+    const result = await passwordResetService.requestPasswordReset(validated.email);
+    res.json(result);
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: err.errors[0]?.message || 'Invalid email address.',
+        },
+      });
+    }
+    console.error('[AuthRoutes] Forgot password error:', err);
+    res.json({
+      success: true,
+      message: 'If an account exists for this email, a password reset link has been sent.',
+    });
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ */
+authRouter.post('/reset-password', authLimiter.middleware(10), async (req: Request, res: Response) => {
+  try {
+    const validated = resetPasswordSchema.parse(req.body);
+    const result = await passwordResetService.resetPassword(validated.token, validated.newPassword);
+    res.json(result);
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: err.errors[0]?.message || 'Invalid input.',
+        },
+      });
+    }
+    if (err.message?.includes('INVALID_TOKEN') || err.message?.includes('TOKEN_USED') || err.message?.includes('TOKEN_EXPIRED')) {
+      return res.status(400).json({
+        error: {
+          code: 'INVALID_RESET_TOKEN',
+          message: err.message.replace(/^[A-Z_]+:\s*/, ''),
+        },
+      });
+    }
+    if (err.message?.includes('WEAK_PASSWORD')) {
+      return res.status(400).json({
+        error: {
+          code: 'WEAK_PASSWORD',
+          message: 'Password must be at least 8 characters long.',
+        },
+      });
+    }
+    console.error('[AuthRoutes] Reset password error:', err);
+    res.status(500).json({
+      error: {
+        code: 'RESET_FAILED',
+        message: 'Could not reset password. Please try again.',
       },
     });
   }

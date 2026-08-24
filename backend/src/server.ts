@@ -35,6 +35,21 @@ app.use(express.static(path.resolve(__dirname, '../src/public')));
 app.use(express.static(path.resolve(process.cwd(), 'src/public')));
 app.use(express.static(path.resolve(process.cwd(), 'backend/src/public')));
 
+// Explicit Route for /reset-password
+app.get('/reset-password', (_req: Request, res: Response) => {
+  const possiblePaths = [
+    path.resolve(__dirname, 'public/reset-password.html'),
+    path.resolve(__dirname, '../src/public/reset-password.html'),
+    path.resolve(process.cwd(), 'src/public/reset-password.html'),
+    path.resolve(process.cwd(), 'backend/src/public/reset-password.html'),
+  ];
+  const fs = require('fs');
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return res.sendFile(p);
+  }
+  res.status(404).send('Reset page not found.');
+});
+
 /**
  * Health check & configuration status endpoint (Section 31 & 36)
  */

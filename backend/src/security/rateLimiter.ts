@@ -109,6 +109,28 @@ export class InMemoryRateLimiter implements IRateLimiter {
     };
   }
 
+  public emailMiddleware(maxRequests = 3, windowMs = 15 * 60 * 1000) {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      const email = (req.body?.email || req.ip || 'anonymous').toLowerCase().trim();
+      const key = `pwd_reset:${email}`;
+      const result = await this.checkLimit(key, maxRequests, windowMs);
+
+      res.setHeader('X-RateLimit-Limit', maxRequests);
+      res.setHeader('X-RateLimit-Remaining', result.remaining);
+
+      if (!result.allowed) {
+        return res.status(429).json({
+          error: {
+            code: 'RATE_LIMIT_EXCEEDED',
+            message: `Too many password reset requests for this email. Please try again later.`,
+          },
+        });
+      }
+
+      next();
+    };
+  }
+
   public cleanup(): void {
     const now = Date.now();
     for (const [key, record] of this.requests.entries()) {
@@ -122,3 +144,4 @@ export class InMemoryRateLimiter implements IRateLimiter {
 export const standardLimiter = new InMemoryRateLimiter(60 * 1000, 100);
 export const authLimiter = new InMemoryRateLimiter(60 * 1000, 15);
 export const generationLimiter = new InMemoryRateLimiter(60 * 1000, 10);
+export const passwordResetLimiter = new InMemoryRateLimiter(15 * 60 * 1000, 3);
