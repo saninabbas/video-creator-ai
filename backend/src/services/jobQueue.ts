@@ -205,6 +205,12 @@ export class PersistentJobQueue {
 
     console.log(`[JobQueue] Enqueued job ${jobId} for user ${input.userId} (${requiredCredits} credits debited)`);
 
+    setImmediate(() => {
+      this.processNextJob().catch((err) => {
+        console.error('[JobQueue] Error during immediate job trigger:', err);
+      });
+    });
+
     return {
       jobId,
       videoId,
@@ -232,13 +238,13 @@ export class PersistentJobQueue {
 
     for (let attempt = 0; attempt < 5; attempt++) {
       const nowIso = new Date().toISOString();
-      // Select candidate
+      // Select candidate - newest creator jobs first
       const candidate = await db.queryOne<DbJobRecord>(
         `SELECT * FROM video_jobs 
          WHERE status IN ('queued', 'retrying') 
            AND (next_retry_at IS NULL OR next_retry_at <= $1)
            AND (lease_expires_at IS NULL OR lease_expires_at < $1)
-         ORDER BY created_at ASC 
+         ORDER BY created_at DESC 
          LIMIT 1`,
         [nowIso]
       );
