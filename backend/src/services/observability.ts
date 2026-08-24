@@ -166,7 +166,7 @@ export class ObservabilityService {
     return message
       .replace(/AIzaSy[A-Za-z0-9_-]{33}/g, 'AIzaSy***REDACTED***')
       .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer ***REDACTED***')
-      .replace(/password["']?\s*:\s*["'][^"']+["']/gi, 'password:"***REDACTED***"')
+      .replace(/password\s*[:=]?\s*["'][^"']+["']/gi, 'password:"***REDACTED***"')
       .replace(/postgres:\/\/[^:]+:[^@]+@/gi, 'postgres://***:***@');
   }
 }
