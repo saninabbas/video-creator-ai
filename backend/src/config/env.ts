@@ -8,7 +8,7 @@ const envSchema = z.object({
   PORT: z.string().default('3000').transform((v) => parseInt(v, 10)),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   GEMINI_API_KEY: z.string().optional().default(''),
-  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
   VEO_MODEL: z.string().default('veo-3.1-generate-preview'),
   STORAGE_DIR: z.string().default('./storage/media'),
   MAX_CONCURRENT_VEO_JOBS: z.string().default('2').transform((v) => parseInt(v, 10)),

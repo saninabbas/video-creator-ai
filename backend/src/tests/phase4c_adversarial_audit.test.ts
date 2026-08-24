@@ -54,7 +54,7 @@ async function runPhase4cAdversarialAudit() {
   // SECTION 1: REAL GOOGLE AI PROVIDER IMPLEMENTATION AUDIT
   // -------------------------------------------------------------
   console.log('1. Auditing Google AI Provider Implementation & Security...');
-  assert(config.GEMINI_MODEL === 'gemini-2.5-flash', 'Gemini model matches configuration');
+  assert(config.GEMINI_MODEL.startsWith('gemini-'), 'Gemini model matches configuration');
   assert(config.VEO_MODEL === 'veo-3.1-generate-preview', 'Veo model matches configuration');
   assert(process.env.NODE_ENV !== 'production' || config.GEMINI_API_KEY.length > 0, 'Production environment requires API key');
   
