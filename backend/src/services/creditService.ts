@@ -135,6 +135,36 @@ export class CreditService {
   }
 
   /**
+   * Atomically adds credits to a user wallet and records a transaction.
+   */
+  public async addCredits(
+    userId: string,
+    amount: number,
+    type: TransactionType = 'bonus',
+    description: string = 'Credits granted'
+  ): Promise<number> {
+    if (amount <= 0) return 0;
+
+    let wallet = await this.getWallet(userId);
+    if (!wallet) {
+      wallet = await this.initializeWallet(userId, 0);
+    }
+
+    await db.execute(
+      `UPDATE credit_wallets SET balance = balance + $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+      [amount, wallet.id]
+    );
+
+    const updatedWallet = await this.getWallet(userId);
+    const newBalance = updatedWallet ? updatedWallet.balance : wallet.balance + amount;
+
+    await this.recordTransaction(userId, wallet.id, amount, type, description, null, newBalance);
+
+    console.log(`[CreditService] Added ${amount} credits to user ${userId}. New balance: ${newBalance}`);
+    return newBalance;
+  }
+
+  /**
    * Gets recent transaction history for a user.
    */
   public async getTransactions(userId: string, limit = 50): Promise<CreditTransaction[]> {
