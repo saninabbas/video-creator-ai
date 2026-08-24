@@ -71,38 +71,126 @@ export class VideoAssembler {
   }
 
   /**
-   * Generates a sample scene clip for testing/verification when external API calls are stubbed or during unit tests.
+   * Generates a dynamic AI visual scene clip with Ken-Burns motion and sound.
    */
-  public generateTestSceneClip(
+  public async generateTestSceneClip(
     outputPath: string,
     durationSeconds: number,
     aspectRatio: AspectRatio,
     sceneTitle: string
   ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const width = aspectRatio === '9:16' ? 720 : 1280;
-      const height = aspectRatio === '9:16' ? 1280 : 720;
+    const width = aspectRatio === '9:16' ? 720 : 1280;
+    const height = aspectRatio === '9:16' ? 1280 : 720;
 
-      const dir = path.dirname(outputPath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+    const dir = path.dirname(outputPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    const tempImgPath = path.join(dir, `frame_${Date.now()}_${Math.floor(Math.random()*10000)}.jpg`);
+    const promptQuery = sceneTitle.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'cinematic ultra realistic 4k shot';
+    const seed = Math.floor(Math.random() * 1000000);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(promptQuery + ' cinematic photorealistic 4k')}` +
+      `?width=${width}&height=${height}&nologo=true&seed=${seed}`;
+
+    let imageDownloaded = false;
+    try {
+      imageDownloaded = await this.downloadImage(imageUrl, tempImgPath, 7000);
+    } catch (_) {
+      imageDownloaded = false;
+    }
+
+    return new Promise((resolve, reject) => {
+      let command = ffmpeg();
+
+      if (imageDownloaded && fs.existsSync(tempImgPath)) {
+        const totalFrames = Math.max(30, durationSeconds * 30);
+        command
+          .input(tempImgPath)
+          .loop(durationSeconds)
+          .input(`anoisesrc=d=${durationSeconds}:c=pink:r=44100:a=0.001`)
+          .inputFormat('lavfi')
+          .videoCodec('libx264')
+          .audioCodec('aac')
+          .outputOptions([
+            '-pix_fmt yuv420p',
+            `-vf scale=${width}:${height},zoompan=z='min(zoom+0.0015,1.25)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${totalFrames}:s=${width}x${height}:fps=30`,
+            '-preset fast',
+            '-shortest'
+          ]);
+      } else {
+        // Fallback procedural video
+        command
+          .input(`color=c=0x0F172A:s=${width}x${height}:d=${durationSeconds}:r=30`)
+          .inputFormat('lavfi')
+          .input(`anoisesrc=d=${durationSeconds}:c=pink:r=44100:a=0.001`)
+          .inputFormat('lavfi')
+          .videoCodec('libx264')
+          .audioCodec('aac')
+          .outputOptions(['-pix_fmt yuv420p', '-shortest']);
       }
 
-      ffmpeg()
-        .input(`color=c=0x1A1A2E:s=${width}x${height}:d=${durationSeconds}:r=30`)
-        .inputFormat('lavfi')
-        .input(`anoisesrc=d=${durationSeconds}:c=pink:r=44100:a=0.001`)
-        .inputFormat('lavfi')
-        .videoCodec('libx264')
-        .audioCodec('aac')
-        .outputOptions(['-pix_fmt yuv420p', '-shortest'])
+      command
         .output(outputPath)
-        .on('end', () => resolve(outputPath))
+        .on('end', () => {
+          if (fs.existsSync(tempImgPath)) {
+            try { fs.unlinkSync(tempImgPath); } catch (_) {}
+          }
+          resolve(outputPath);
+        })
         .on('error', (err) => {
-          console.error(`[VideoAssembler] Error generating test scene clip:`, err.message);
-          reject(err);
+          console.error(`[VideoAssembler] Error rendering motion scene clip:`, err.message);
+          if (fs.existsSync(tempImgPath)) {
+            try { fs.unlinkSync(tempImgPath); } catch (_) {}
+          }
+          // If fancy filter fails, fallback to simple clip
+          ffmpeg()
+            .input(`color=c=0x111827:s=${width}x${height}:d=${durationSeconds}:r=30`)
+            .inputFormat('lavfi')
+            .input(`anoisesrc=d=${durationSeconds}:c=pink:r=44100:a=0.001`)
+            .inputFormat('lavfi')
+            .videoCodec('libx264')
+            .audioCodec('aac')
+            .outputOptions(['-pix_fmt yuv420p', '-shortest'])
+            .output(outputPath)
+            .on('end', () => resolve(outputPath))
+            .on('error', (fallbackErr) => reject(fallbackErr))
+            .run();
         })
         .run();
+    });
+  }
+
+  private downloadImage(url: string, dest: string, timeoutMs: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const https = require('https');
+      const http = require('http');
+      const file = fs.createWriteStream(dest);
+      const client = url.startsWith('https') ? https : http;
+      const req = client.get(url, { timeout: timeoutMs }, (res: any) => {
+        if (res.statusCode === 200) {
+          res.pipe(file);
+          file.on('finish', () => {
+            file.close();
+            resolve(true);
+          });
+        } else {
+          file.close();
+          if (fs.existsSync(dest)) fs.unlinkSync(dest);
+          resolve(false);
+        }
+      });
+      req.on('error', () => {
+        file.close();
+        if (fs.existsSync(dest)) fs.unlinkSync(dest);
+        resolve(false);
+      });
+      req.on('timeout', () => {
+        req.destroy();
+        file.close();
+        if (fs.existsSync(dest)) fs.unlinkSync(dest);
+        resolve(false);
+      });
     });
   }
 
