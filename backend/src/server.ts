@@ -10,6 +10,7 @@ import { projectRouter } from './routes/projectRoutes.js';
 import { videoRouter } from './routes/videoRoutes.js';
 import { creditRouter } from './routes/creditRoutes.js';
 import { notificationRouter } from './routes/notificationRoutes.js';
+import { billingRouter } from './routes/billingRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -47,6 +48,7 @@ app.use('/api/projects', projectRouter);
 app.use('/api/videos', videoRouter);
 app.use('/api/credits', creditRouter);
 app.use('/api/notifications', notificationRouter);
+app.use('/api/billing', billingRouter);
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

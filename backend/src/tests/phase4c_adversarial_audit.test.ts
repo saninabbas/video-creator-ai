@@ -139,7 +139,7 @@ async function runPhase4cAdversarialAudit() {
     name: 'Broke User',
   });
   // Drain balance to 0
-  await creditService.debitCredits(brokeUser.user.id, 50, 'subscription', 'Drain for test');
+  await creditService.debitCredits(brokeUser.user.id, 50, 'purchase', 'Drain for test');
 
   let failedAsExpected = false;
   try {
@@ -174,6 +174,7 @@ async function runPhase4cAdversarialAudit() {
         userId: raceUser.user.id,
         topic: '100 Concurrent Idempotency Race',
         videoType: 'short',
+        durationSeconds: 15,
         idempotencyKey: raceKey,
         style: 'cinematic',
       })
@@ -200,10 +201,10 @@ async function runPhase4cAdversarialAudit() {
 
   // Enqueue 4 test jobs
   const jobList = await Promise.all([
-    jobQueue.enqueue({ userId: userA.user.id, topic: 'Worker Test 1', videoType: 'short', style: 'cinematic' }),
-    jobQueue.enqueue({ userId: userA.user.id, topic: 'Worker Test 2', videoType: 'short', style: 'cinematic' }),
-    jobQueue.enqueue({ userId: userA.user.id, topic: 'Worker Test 3', videoType: 'short', style: 'cinematic' }),
-    jobQueue.enqueue({ userId: userA.user.id, topic: 'Worker Test 4', videoType: 'short', style: 'cinematic' }),
+    jobQueue.enqueue({ userId: userA.user.id, topic: 'Worker Test 1', videoType: 'short', durationSeconds: 15, style: 'cinematic' }),
+    jobQueue.enqueue({ userId: userA.user.id, topic: 'Worker Test 2', videoType: 'short', durationSeconds: 15, style: 'cinematic' }),
+    jobQueue.enqueue({ userId: userA.user.id, topic: 'Worker Test 3', videoType: 'short', durationSeconds: 15, style: 'cinematic' }),
+    jobQueue.enqueue({ userId: userA.user.id, topic: 'Worker Test 4', videoType: 'short', durationSeconds: 15, style: 'cinematic' }),
   ]);
 
   // 4 workers attempt to claim simultaneously
@@ -236,7 +237,7 @@ async function runPhase4cAdversarialAudit() {
     password: 'Password123!',
     name: 'Stress Test Pool User',
   });
-  await creditService.refundCredits(stressUser.user.id, 25000, 'Stress benchmark balance');
+  await creditService.refundCredits(stressUser.user.id, 60000, 'Stress benchmark balance');
 
   const batchSize = 100;
   for (let b = 0; b < userCount; b += batchSize) {
@@ -245,10 +246,11 @@ async function runPhase4cAdversarialAudit() {
       const tReqStart = Date.now();
       try {
         // 1. Create Project
+        const isLong = globalIdx % 3 === 0;
         const proj = await projectService.createProject({
           userId: stressUser.user.id,
           title: `Stress Benchmark Project ${globalIdx}`,
-          type: globalIdx % 3 === 0 ? 'long' : 'short',
+          type: isLong ? 'long' : 'short',
         });
 
         // 2. Enqueue Video Job
@@ -256,8 +258,8 @@ async function runPhase4cAdversarialAudit() {
           userId: stressUser.user.id,
           projectId: proj.id,
           topic: `Stress Job ${globalIdx}`,
-          videoType: globalIdx % 3 === 0 ? 'long' : 'short',
-          durationSeconds: 15,
+          videoType: isLong ? 'long' : 'short',
+          durationSeconds: isLong ? 480 : 15,
           style: 'cinematic',
           idempotencyKey: `bench_stress_key_${globalIdx}_${tBenchStart}`,
         });

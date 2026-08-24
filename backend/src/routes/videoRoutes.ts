@@ -1,11 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import path from 'path';
+import fs from 'fs';
 import { videoService } from '../services/videoService.js';
 import { jobQueue } from '../services/jobQueue.js';
 import { geminiDirector } from '../ai/gemini/geminiDirector.js';
 import { requireAuth } from '../middleware/authMiddleware.js';
 import { generationLimiter } from '../security/rateLimiter.js';
 import { db } from '../database/connection.js';
+import { validateAndSanitizeDuration } from '../config/credits.js';
+import { config } from '../config/env.js';
 
 export const videoRouter = Router();
 videoRouter.use(requireAuth);
@@ -13,8 +17,8 @@ videoRouter.use(requireAuth);
 const createVideoSchema = z.object({
   topic: z.string().min(3, 'Topic must be at least 3 characters long.').max(500),
   videoType: z.enum(['short', 'long']).default('short'),
-  durationSeconds: z.number().int().min(15).max(90).optional(),
-  durationMinutes: z.number().int().min(8).max(30).optional(),
+  durationSeconds: z.number().int().optional(),
+  durationMinutes: z.number().int().optional(),
   style: z.enum(['realistic', 'cinematic', 'documentary', 'educational', 'storytelling', 'simple']).default('cinematic'),
   projectId: z.string().optional(),
   customInstructions: z.string().max(1000).optional(),
@@ -22,19 +26,34 @@ const createVideoSchema = z.object({
 
 /**
  * POST /api/videos/create
- * Initiates video generation, deducts credits, and returns queued job ID immediately.
+ * Initiates video generation, enforces server-side duration limits & pricing, deducts credits, and returns queued job ID.
  */
 videoRouter.post('/create', generationLimiter.middleware(10), async (req: Request, res: Response) => {
   try {
     const validated = createVideoSchema.parse(req.body);
+
+    // Hard Generation Limits & Duration Pricing Validation (Tasks 1, 2, 3)
+    const durationCheck = validateAndSanitizeDuration(
+      validated.videoType,
+      validated.durationSeconds,
+      validated.durationMinutes
+    );
+
+    if (!durationCheck.valid) {
+      return res.status(400).json({
+        error: {
+          code: 'INVALID_DURATION',
+          message: durationCheck.error || 'Invalid video duration specified.',
+        },
+      });
+    }
 
     const enqueued = await jobQueue.enqueue({
       userId: req.user!.id,
       projectId: validated.projectId,
       topic: validated.topic,
       videoType: validated.videoType,
-      durationSeconds: validated.durationSeconds,
-      durationMinutes: validated.durationMinutes,
+      durationSeconds: durationCheck.durationSeconds,
       style: validated.style,
       customInstructions: validated.customInstructions,
     });
@@ -44,6 +63,7 @@ videoRouter.post('/create', generationLimiter.middleware(10), async (req: Reques
       jobId: enqueued.jobId,
       videoId: enqueued.videoId,
       status: enqueued.status,
+      creditsDebited: durationCheck.creditCost,
     });
   } catch (err: any) {
     if (err.name === 'ZodError') {
@@ -54,6 +74,14 @@ videoRouter.post('/create', generationLimiter.middleware(10), async (req: Reques
         error: {
           code: 'INSUFFICIENT_CREDITS',
           message: "You don't have enough credits for this video creation.",
+        },
+      });
+    }
+    if (err.message?.includes('INVALID_DURATION')) {
+      return res.status(400).json({
+        error: {
+          code: 'INVALID_DURATION',
+          message: err.message,
         },
       });
     }
@@ -91,6 +119,37 @@ videoRouter.get('/:id', async (req: Request, res: Response) => {
     res.json({ video: { ...video, scenes } });
   } catch (err: any) {
     res.status(500).json({ error: { code: 'FETCH_ERROR', message: 'Failed to fetch video.' } });
+  }
+});
+
+/**
+ * GET /api/videos/:id/stream (Task 9 - Authenticated Media Streaming & IDOR Protection)
+ */
+videoRouter.get('/:id/stream', async (req: Request, res: Response) => {
+  try {
+    const videoId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    // Ownership check: only owner can stream
+    const video = await videoService.getVideoById(req.user!.id, videoId);
+
+    if (!video) {
+      return res.status(404).json({ error: { code: 'VIDEO_NOT_FOUND', message: 'Video not found or access denied.' } });
+    }
+
+    if (!video.videoUrl) {
+      return res.status(400).json({ error: { code: 'MEDIA_NOT_READY', message: 'Video has not finished processing yet.' } });
+    }
+
+    // Resolve file path safely
+    const cleanRelative = video.videoUrl.replace(/^\/media\//, '').replace(/^media\//, '');
+    const absolutePath = path.resolve(config.STORAGE_DIR, cleanRelative);
+
+    if (!fs.existsSync(absolutePath)) {
+      return res.status(404).json({ error: { code: 'FILE_NOT_FOUND', message: 'Underlying media file was not found on disk.' } });
+    }
+
+    res.sendFile(absolutePath);
+  } catch (err: any) {
+    res.status(500).json({ error: { code: 'STREAM_ERROR', message: 'Failed to stream video.' } });
   }
 });
 
@@ -142,7 +201,6 @@ videoRouter.post('/:id/improve', async (req: Request, res: Response) => {
       return res.status(404).json({ error: { code: 'VIDEO_NOT_FOUND', message: 'Video not found.' } });
     }
 
-    // Get project script
     const project = video.projectId ? await db.queryOne<any>('SELECT script_json FROM projects WHERE id = $1', [video.projectId]) : null;
     const script = project?.script_json ? JSON.parse(project.script_json) : null;
 

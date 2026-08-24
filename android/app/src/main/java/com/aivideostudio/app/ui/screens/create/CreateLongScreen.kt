@@ -186,9 +186,18 @@ fun CreateLongScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Dominant Generate Button (50 Credits)
+            val creditCost = when (state.durationMinutes) {
+                8 -> 50
+                10 -> 55
+                15 -> 65
+                20 -> 75
+                30 -> 90
+                else -> 50
+            }
+
+            // Dominant Generate Button (Dynamic Credits: 50, 55, 65, 75, 90)
             PrimaryButton(
-                text = "⚡ Generate Long Video (50 Credits)",
+                text = "⚡ Generate Long Video ($creditCost Credits)",
                 onClick = { viewModel.generateLongVideo() },
                 isLoading = state.isLoading,
                 containerColor = SecondaryBlue

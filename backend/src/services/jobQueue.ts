@@ -5,8 +5,13 @@ import { veoService } from './veo.js';
 import { videoAssemblerService } from './videoAssembler.js';
 import { cloudStorage } from './cloudStorage.js';
 import { creditService } from './creditService.js';
-import { CREDIT_CONFIG } from '../config/credits.js';
 import { GENERATION_POLICY } from '../config/generationPolicy.js';
+import {
+  CREDIT_CONFIG,
+  validateAndSanitizeDuration,
+  getShortVideoCreditCost,
+  getLongVideoCreditCost,
+} from '../config/credits.js';
 import { retryEngine } from './retryEngine.js';
 import { observability } from './observability.js';
 import { notificationService } from './notificationService.js';
@@ -106,15 +111,19 @@ export class PersistentJobQueue {
       }
     }
 
-    const requiredCredits =
-      input.videoType === 'long'
-        ? CREDIT_CONFIG.COSTS.LONG_VIDEO
-        : CREDIT_CONFIG.COSTS.SHORT_VIDEO;
+    // 1. Calculate required credits using authoritative server-side duration pricing (Tasks 1, 2, 3)
+    const durationCheck = validateAndSanitizeDuration(
+      input.videoType,
+      input.durationSeconds,
+      input.durationMinutes
+    );
 
-    const durationSeconds =
-      input.videoType === 'long'
-        ? (input.durationMinutes || 8) * 60
-        : input.durationSeconds || 30;
+    if (!durationCheck.valid) {
+      throw new Error(`INVALID_DURATION: ${durationCheck.error}`);
+    }
+
+    const requiredCredits = durationCheck.creditCost;
+    const durationSeconds = durationCheck.durationSeconds;
 
     const jobId = uuidv4();
     const videoId = uuidv4();
@@ -488,8 +497,11 @@ export class PersistentJobQueue {
           [job.video_id]
         );
 
-        // Refund credits on unrecoverable failure
-        const cost = video.type === 'long' ? CREDIT_CONFIG.COSTS.LONG_VIDEO : CREDIT_CONFIG.COSTS.SHORT_VIDEO;
+        // Refund credits on unrecoverable failure (Tasks 1, 2, 7)
+        const cost =
+          video.type === 'long'
+            ? getLongVideoCreditCost(video.duration_seconds || 480)
+            : getShortVideoCreditCost(video.duration_seconds || 30);
         await creditService.refundCredits(
           job.user_id,
           cost,

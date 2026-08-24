@@ -188,9 +188,15 @@ fun CreateShortScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Dominant Generate Button (10 Credits)
+            val creditCost = when {
+                state.durationSeconds <= 20 -> 10
+                state.durationSeconds <= 40 -> 20
+                else -> 35
+            }
+
+            // Dominant Generate Button (Dynamic Credits: 10, 20, 35)
             PrimaryButton(
-                text = "⚡ Generate Short (10 Credits)",
+                text = "⚡ Generate Short ($creditCost Credits)",
                 onClick = { viewModel.generateVideo() },
                 isLoading = state.isLoading
             )

@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../database/connection.js';
 
-export type NotificationType = 'video_completed' | 'video_failed' | 'credits_low' | 'system';
+export type NotificationType = 'video_completed' | 'video_failed' | 'credits_low' | 'credits_purchased' | 'system';
 
 export interface NotificationRecord {
   id: string;
