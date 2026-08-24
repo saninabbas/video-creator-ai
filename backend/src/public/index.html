@@ -329,8 +329,9 @@
     async function verifySession() {
       try {
         const wallet = await apiRequest('/api/credits');
-        if (wallet.success) {
-          currentWallet = wallet.data.balance;
+        const balance = wallet.balance !== undefined ? wallet.balance : wallet.data?.balance;
+        if (balance !== undefined && !wallet.error) {
+          currentWallet = balance;
           document.getElementById('credit-count').innerText = currentWallet;
           document.getElementById('credit-badge').classList.remove('hidden');
           document.getElementById('credit-badge').classList.add('flex');
@@ -379,15 +380,18 @@
 
       try {
         const res = await apiRequest(endpoint, { method: 'POST', body: JSON.stringify(payload) });
-        if (res.success && res.data.token) {
-          authToken = res.data.token;
+        const token = res.token || res.data?.token;
+        const user = res.user || res.data?.user;
+
+        if (token) {
+          authToken = token;
           localStorage.setItem('auth_token', authToken);
-          currentUser = res.data.user;
+          currentUser = user || { name: name || 'Creator' };
           document.getElementById('user-name').innerText = currentUser.name;
           document.getElementById('greeting-text').innerText = `Good morning, ${currentUser.name}`;
           verifySession();
         } else {
-          errBox.innerText = res.error?.message || 'Authentication failed.';
+          errBox.innerText = res.error?.message || res.message || 'Authentication failed.';
           errBox.classList.remove('hidden');
         }
       } catch (err) {
@@ -572,10 +576,11 @@
         const res = await apiRequest('/api/videos');
         const grid = document.getElementById('video-grid');
         const empty = document.getElementById('video-empty');
+        const videoList = res.videos || res.data || [];
 
-        if (res.success && res.data && res.data.length > 0) {
+        if (Array.isArray(videoList) && videoList.length > 0) {
           empty.classList.add('hidden');
-          grid.innerHTML = res.data.map(v => {
+          grid.innerHTML = videoList.map(v => {
             const isReady = v.status === 'completed';
             const statusHtml = isReady 
               ? '<span class="text-emerald-400 text-xs font-semibold">● Ready</span>' 
