@@ -1,0 +1,12 @@
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Dependencies & Build
+node_modules/
+dist/
+
+# Storage & SQLite
+storage/media/
+storage/*.sqlite
