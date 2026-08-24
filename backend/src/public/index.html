@@ -605,6 +605,17 @@
           grid.innerHTML = '';
           empty.classList.remove('hidden');
         }
+
+        const hasActiveJob = videoList.some(v => v.status === 'generating' || v.status === 'queued' || v.status === 'processing');
+        if (hasActiveJob) {
+          if (!window._pollTimer) {
+            window._pollTimer = setTimeout(() => {
+              window._pollTimer = null;
+              loadUserVideos();
+              verifySession();
+            }, 5000);
+          }
+        }
       } catch (_) {}
     }
 
