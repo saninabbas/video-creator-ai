@@ -60,13 +60,24 @@ export class VideoService {
     return video;
   }
 
-  public async getUserVideos(userId: string, limit = 50): Promise<VideoRecord[]> {
+  public async getUserVideos(userId: string, limit = 50): Promise<(VideoRecord & { progress?: number; currentStep?: string })[]> {
     const rows = await db.query<any>(
-      'SELECT * FROM videos WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2',
+      `SELECT v.*, j.progress, j.current_step, j.status AS job_status 
+       FROM videos v
+       LEFT JOIN video_jobs j ON j.video_id = v.id
+       WHERE v.user_id = $1 
+       ORDER BY v.created_at DESC LIMIT $2`,
       [userId, limit]
     );
 
-    return rows.map((r) => this.mapVideoRow(r));
+    return rows.map((r) => {
+      const v = this.mapVideoRow(r);
+      return {
+        ...v,
+        progress: r.progress !== undefined && r.progress !== null ? r.progress : (v.status === 'completed' ? 100 : 0),
+        currentStep: r.current_step || (v.status === 'completed' ? 'Ready' : 'Generating visuals...'),
+      };
+    });
   }
 
   public async getVideoById(userId: string, videoId: string): Promise<VideoRecord | null> {

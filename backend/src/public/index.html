@@ -156,6 +156,27 @@
         </div>
       </div>
 
+      <!-- LIVE GENERATION BANNER -->
+      <div id="live-generation-banner" class="hidden surface-elevated border border-violet-500/50 rounded-2xl p-5 shadow-xl shadow-purple-950/30">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center space-x-2.5">
+            <span class="relative flex h-3 w-3">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-violet-500"></span>
+            </span>
+            <span class="text-xs font-bold uppercase tracking-wider text-violet-400">AI Studio Generating Video...</span>
+          </div>
+          <span id="live-gen-percent" class="text-xs font-bold text-white bg-violet-600/30 border border-violet-500/40 px-2.5 py-0.5 rounded-full">45%</span>
+        </div>
+        <h3 id="live-gen-title" class="text-sm font-bold text-white truncate mb-1">Topic Name</h3>
+        <p id="live-gen-step" class="text-xs text-secondary mb-3 flex items-center">
+          <i class="fa-solid fa-spinner fa-spin mr-2 text-violet-400"></i> Directing scenes with visual engine...
+        </p>
+        <div class="w-full bg-[#121419] h-2 rounded-full overflow-hidden border border-custom">
+          <div id="live-gen-bar" class="bg-gradient-to-r from-violet-600 to-indigo-500 h-full rounded-full transition-all duration-500" style="width: 45%"></div>
+        </div>
+      </div>
+
       <!-- RECENT VIDEOS / LIBRARY -->
       <div>
         <div class="flex justify-between items-center mb-6">
@@ -576,21 +597,51 @@
         const res = await apiRequest('/api/videos');
         const grid = document.getElementById('video-grid');
         const empty = document.getElementById('video-empty');
+        const banner = document.getElementById('live-generation-banner');
         const videoList = res.videos || res.data || [];
+
+        const activeJob = videoList.find(v => v.status === 'generating' || v.status === 'queued' || v.status === 'processing' || v.status === 'planning');
+
+        if (activeJob && banner) {
+          banner.classList.remove('hidden');
+          document.getElementById('live-gen-title').innerText = activeJob.title;
+          const stepText = activeJob.currentStep || 'Directing & rendering scenes with AI visual engine...';
+          document.getElementById('live-gen-step').innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2 text-violet-400"></i> ${stepText}`;
+          const pct = Math.max(15, activeJob.progress || 25);
+          document.getElementById('live-gen-percent').innerText = `${pct}%`;
+          document.getElementById('live-gen-bar').style.width = `${pct}%`;
+        } else if (banner) {
+          banner.classList.add('hidden');
+        }
 
         if (Array.isArray(videoList) && videoList.length > 0) {
           empty.classList.add('hidden');
           grid.innerHTML = videoList.map(v => {
             const isReady = v.status === 'completed';
-            const statusHtml = isReady 
-              ? '<span class="text-emerald-400 text-xs font-semibold">● Ready</span>' 
-              : '<span class="text-violet-400 text-xs font-semibold animate-pulse">◌ Generating</span>';
+            const isGenerating = v.status === 'generating' || v.status === 'queued' || v.status === 'processing' || v.status === 'planning';
             const durationText = v.durationSeconds >= 60 ? `${Math.floor(v.durationSeconds/60)}:${v.durationSeconds%60}` : `00:${v.durationSeconds}`;
+            const pct = Math.max(10, v.progress || 25);
+            const stepName = v.currentStep || 'Rendering scenes...';
+
+            const statusHtml = isReady 
+              ? '<span class="text-emerald-400 text-xs font-semibold flex items-center"><i class="fa-solid fa-circle-check mr-1 text-[10px]"></i> Ready</span>' 
+              : `<span class="text-violet-400 text-xs font-semibold animate-pulse flex items-center"><i class="fa-solid fa-spinner fa-spin mr-1 text-[10px]"></i> Generating (${pct}%)</span>`;
 
             return `
-              <div onclick="openPlayer('${v.id}')" class="surface border border-custom rounded-2xl p-3.5 cursor-pointer hover:border-violet-500 transition">
+              <div onclick="${isReady ? `openPlayer('${v.id}')` : ''}" class="surface border border-custom rounded-2xl p-3.5 ${isReady ? 'cursor-pointer hover:border-violet-500' : 'border-violet-500/40'} transition relative group">
                 <div class="aspect-video bg-[#181B21] rounded-xl overflow-hidden mb-3 relative flex items-center justify-center">
-                  ${v.thumbnailUrl ? `<img src="${v.thumbnailUrl}" class="w-full h-full object-cover"/>` : '<span class="text-2xl opacity-40">🎬</span>'}
+                  ${isReady 
+                    ? (v.thumbnailUrl ? `<img src="${v.thumbnailUrl}" class="w-full h-full object-cover"/>` : '<span class="text-2xl opacity-40">🎬</span>')
+                    : `
+                      <div class="text-center p-3">
+                        <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-violet-500/20 border border-violet-500/50 mb-1.5">
+                          <i class="fa-solid fa-wand-magic-sparkles text-violet-400 text-xs animate-pulse"></i>
+                        </div>
+                        <div class="text-[11px] font-bold text-white">${pct}% Generating</div>
+                        <div class="text-[9px] text-violet-300 truncate max-w-[130px] opacity-80">${stepName}</div>
+                      </div>
+                    `
+                  }
                   <span class="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] font-bold px-2 py-0.5 rounded">${durationText}</span>
                 </div>
                 <h4 class="font-bold text-sm text-white truncate mb-1">${v.title}</h4>
@@ -606,14 +657,13 @@
           empty.classList.remove('hidden');
         }
 
-        const hasActiveJob = videoList.some(v => v.status === 'generating' || v.status === 'queued' || v.status === 'processing');
-        if (hasActiveJob) {
+        if (activeJob) {
           if (!window._pollTimer) {
             window._pollTimer = setTimeout(() => {
               window._pollTimer = null;
               loadUserVideos();
               verifySession();
-            }, 5000);
+            }, 2500);
           }
         }
       } catch (_) {}
