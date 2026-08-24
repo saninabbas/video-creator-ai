@@ -1004,18 +1004,27 @@
     // PLAYER MODAL
     async function openPlayer(videoId) {
       try {
+        console.log('[openPlayer] Opening video:', videoId);
         const res = await apiRequest(`/api/videos/${videoId}`);
         const v = res.video || res.data || currentVideos.find(x => x.id === videoId);
         if (v) {
           currentActiveVideo = v;
           document.getElementById('player-title').innerText = v.title;
-          document.getElementById('player-meta').innerText = `${v.durationSeconds} sec · ${v.type === 'short' ? '9:16 Vertical' : '16:9 Landscape'} · Generated today`;
+          document.getElementById('player-meta').innerText = `${v.durationSeconds || 15} sec · ${v.type === 'short' ? '9:16 Vertical' : '16:9 Landscape'} · Generated Ready`;
           const videoEl = document.getElementById('player-video');
-          videoEl.src = v.videoUrl || '';
-          document.getElementById('player-download-btn').href = v.videoUrl || '#';
+          const videoUrl = v.videoUrl || (v.storageKey ? `/media/${v.storageKey}` : '');
+          console.log('[openPlayer] Resolved video URL:', videoUrl);
+          videoEl.src = videoUrl;
+          document.getElementById('player-download-btn').href = videoUrl || '#';
           document.getElementById('modal-player').classList.remove('hidden');
+          videoEl.load();
+          videoEl.play().catch(e => console.log('Autoplay deferred:', e));
+        } else {
+          alert('Video details not found. Please refresh.');
         }
-      } catch (_) {}
+      } catch (err) {
+        console.error('Failed to open video:', err);
+      }
     }
 
     function closePlayer() {

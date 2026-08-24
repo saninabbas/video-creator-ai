@@ -117,7 +117,12 @@ videoRouter.get('/:id', async (req: Request, res: Response) => {
     }
 
     const scenes = await videoService.getVideoScenes(videoId);
-    res.json({ video: { ...video, scenes } });
+    const videoData = { ...video, scenes };
+    res.json({
+      success: true,
+      video: videoData,
+      data: videoData,
+    });
   } catch (err: any) {
     res.status(500).json({ error: { code: 'FETCH_ERROR', message: 'Failed to fetch video.' } });
   }
