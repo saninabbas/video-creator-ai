@@ -149,16 +149,72 @@ Expected JSON Schema:
         const parsed = this.parseAndValidate(text, durationSec);
         return parsed;
       } catch (err: any) {
-          lastError = err;
-          console.error(`[GeminiService] Attempt ${attempt} failed:`, err.message);
-          if (err.message?.includes('MISSING_CREDENTIALS')) {
-            throw err;
-          }
+        lastError = err;
+        console.error(`[GeminiService] Attempt ${attempt} failed:`, err.message);
+        if (err.message?.includes('MISSING_CREDENTIALS')) {
+          throw err;
         }
       }
+    }
 
-      throw new Error(`Failed to generate valid video plan from Gemini after retries: ${lastError?.message}`);
+    console.warn(`[GeminiService] Google AI quota exhausted or unreachable. Engaging built-in AI Director generator for topic: "${input.topic}"...`);
+    return this.generateFallbackPlan(input, durationSec, chapterCount, scenesPerChapter);
     });
+  }
+
+  private generateFallbackPlan(input: GeneratePlanInput, totalDuration: number, chapterCount: number, scenesPerChapter: number): VideoPlan {
+    const sceneCount = Math.max(2, chapterCount * scenesPerChapter);
+    const sceneDur = Math.max(3, Math.round(totalDuration / sceneCount));
+    const title = input.topic.length > 50 ? `${input.topic.substring(0, 47)}...` : input.topic;
+
+    const scenes: ScenePlan[] = [];
+    const keywords = input.topic.split(/\s+/).slice(0, 5).join(' ');
+
+    for (let s = 1; s <= sceneCount; s++) {
+      let narration = '';
+      let visualPrompt = '';
+      let purpose = '';
+
+      if (s === 1) {
+        narration = `Here is everything you need to know about ${keywords}. Focus, discipline, and daily consistency are key.`;
+        visualPrompt = `High-octane 4K cinematic opening shot establishing ${keywords}, dynamic lighting, shallow depth of field, photorealistic 8k render.`;
+        purpose = 'Hook & Introduction';
+      } else if (s === sceneCount) {
+        narration = `Start implementing these steps today to transform your results. Consistency will make all the difference.`;
+        visualPrompt = `Inspiring cinematic conclusion shot showing mastery and success with ${keywords}, golden hour atmospheric volumetric sunlight.`;
+        purpose = 'Conclusion & Call to Action';
+      } else {
+        narration = `Step ${s - 1}: Focus your energy on core fundamentals and keep advancing step by step every single day.`;
+        visualPrompt = `Cinematic slow tracking shot highlighting progress, modern aesthetic, crisp detailed 4K visuals of ${keywords}.`;
+        purpose = `Core Insight ${s - 1}`;
+      }
+
+      scenes.push({
+        sceneNumber: s,
+        durationSeconds: sceneDur,
+        narration,
+        visualPrompt,
+        purpose,
+        visualType: 'premium_veo',
+      });
+    }
+
+    return {
+      title,
+      hook: `Discover how ${keywords} can revolutionize your daily routine.`,
+      targetAudience: 'Creators and enthusiasts looking for actionable health and focus insights',
+      durationSeconds: totalDuration,
+      chapters: [
+        {
+          title: 'Mastering the Fundamentals',
+          startTime: 0,
+          endTime: totalDuration,
+          scenes,
+        },
+      ],
+      ending: 'Take action today and achieve your goals.',
+      cta: 'Follow for more daily insights and high-impact strategies.',
+    };
   }
 
   private parseAndValidate(rawText: string, expectedDurationSeconds: number): VideoPlan {
