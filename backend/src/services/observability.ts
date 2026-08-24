@@ -32,6 +32,15 @@ export interface MetricsSnapshot {
   financials: FinancialMetrics;
 }
 
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  type: 'auth' | 'job' | 'credit' | 'billing' | 'system' | 'security';
+  level: 'info' | 'warn' | 'error';
+  message: string;
+  metadata?: any;
+}
+
 export class ObservabilityService {
   private startTime = Date.now();
   private jobsCompleted = 0;
@@ -53,6 +62,36 @@ export class ObservabilityService {
   private geminiDurations: number[] = [];
   private veoDurations: number[] = [];
   private ffmpegDurations: number[] = [];
+  private auditLogs: AuditLogEntry[] = [];
+  private readonly MAX_AUDIT_LOGS = 200;
+
+  public recordAuditLog(
+    type: 'auth' | 'job' | 'credit' | 'billing' | 'system' | 'security',
+    level: 'info' | 'warn' | 'error',
+    message: string,
+    metadata?: any
+  ): void {
+    const entry: AuditLogEntry = {
+      id: Math.random().toString(36).substring(2, 11),
+      timestamp: new Date().toISOString(),
+      type,
+      level,
+      message: this.sanitizeLog(message),
+      metadata: metadata ? JSON.parse(this.sanitizeLog(JSON.stringify(metadata))) : undefined,
+    };
+    this.auditLogs.unshift(entry);
+    if (this.auditLogs.length > this.MAX_AUDIT_LOGS) {
+      this.auditLogs.pop();
+    }
+  }
+
+  public getAuditLogs(limit: number = 50, filterType?: string): AuditLogEntry[] {
+    let logs = this.auditLogs;
+    if (filterType && filterType !== 'all') {
+      logs = logs.filter((l) => l.type === filterType);
+    }
+    return logs.slice(0, limit);
+  }
 
   public recordJobComplete(
     geminiMs?: number,
@@ -164,7 +203,7 @@ export class ObservabilityService {
    */
   public sanitizeLog(message: string): string {
     return message
-      .replace(/AIzaSy[A-Za-z0-9_-]{33}/g, 'AIzaSy***REDACTED***')
+      .replace(/(?:AIzaSy|AQ\.)[A-Za-z0-9._-]{30,70}/g, '***REDACTED_API_KEY***')
       .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer ***REDACTED***')
       .replace(/password\s*[:=]?\s*["'][^"']+["']/gi, 'password:"***REDACTED***"')
       .replace(/postgres:\/\/[^:]+:[^@]+@/gi, 'postgres://***:***@');

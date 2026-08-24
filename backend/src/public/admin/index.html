@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0B0C0F" />
+  <link rel="manifest" href="/admin/manifest.json" />
+  <title>AI Video Studio — Operations Command Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    body { background-color: #0B0C0F; color: #F5F7FA; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+    .surface { background-color: #121419; }
+    .surface-elevated { background-color: #181B21; }
+    .border-custom { border-color: #242832; }
+    .text-secondary { color: #9299A6; }
+    .text-muted { color: #626977; }
+    .brand-gradient { background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%); }
+    .touch-btn { min-height: 44px; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+    /* Hide scrollbars for clean mobile feel */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: #242832; border-radius: 4px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased pb-20 md:pb-0">
+
+  <!-- 1. AUTH SCREEN (ADMIN KEY) -->
+  <div id="admin-auth-view" class="max-w-md w-full mx-auto my-auto p-6 flex flex-col justify-center min-h-[90vh]">
+    <div class="surface border border-custom p-7 rounded-2xl shadow-2xl space-y-6">
+      <div class="text-center">
+        <div class="w-12 h-12 rounded-2xl brand-gradient flex items-center justify-center mx-auto mb-3 shadow-lg shadow-purple-900/30">
+          <span class="text-white text-xl">✦</span>
+        </div>
+        <h2 class="text-xl font-bold text-white tracking-tight">Studio Admin Command</h2>
+        <p class="text-xs text-secondary mt-1">Mobile & Desktop Production Operations</p>
+      </div>
+
+      <div id="auth-err" class="hidden p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs"></div>
+
+      <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">ADMIN ACCESS KEY</label>
+          <input id="admin-key-input" type="password" required placeholder="••••••••••••" class="w-full bg-[#0B0C0F] border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 touch-btn" />
+        </div>
+        <button type="submit" class="w-full brand-gradient text-white font-bold rounded-xl shadow-lg shadow-purple-900/30 hover:opacity-95 transition text-sm touch-btn">
+          Authenticate  →
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. MAIN ADMIN APP (HIDDEN UNTIL AUTH) -->
+  <div id="admin-app-view" class="hidden flex-1 flex flex-col">
+
+    <!-- STICKY TOP EMERGENCY HEADER -->
+    <header class="sticky top-0 z-40 bg-[#121419]/95 backdrop-blur-md border-b border-custom px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2.5">
+        <span class="text-violet-400 text-lg font-bold">✦</span>
+        <div>
+          <span class="font-bold text-sm text-white tracking-tight block leading-tight">Admin Studio</span>
+          <div id="queue-status-indicator" class="flex items-center space-x-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+            <span id="queue-status-text" class="text-[10px] text-emerald-400 font-semibold uppercase tracking-wider">Queue Active</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <!-- Sticky Emergency Pause Button -->
+        <button id="btn-emergency-pause" onclick="toggleEmergencyQueue()" class="touch-btn px-3 py-1.5 rounded-xl border border-amber-500/40 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 text-xs font-bold transition">
+          <i class="fa-solid fa-pause mr-1.5"></i> <span id="btn-pause-text">Pause</span>
+        </button>
+        <button onclick="refreshCurrentTab()" class="touch-btn w-9 h-9 rounded-xl surface-elevated border border-custom text-secondary hover:text-white transition">
+          <i class="fa-solid fa-rotate-right text-xs"></i>
+        </button>
+        <button onclick="adminLogout()" class="touch-btn w-9 h-9 rounded-xl surface-elevated border border-red-500/30 text-red-400 hover:text-red-300 transition">
+          <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT WRAPPER -->
+    <main class="flex-1 max-w-6xl w-full mx-auto p-4 space-y-6">
+
+      <!-- TAB 1: OVERVIEW -->
+      <section id="tab-overview" class="tab-content space-y-5">
+        <!-- Metric Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="surface border border-custom p-4 rounded-2xl">
+            <span class="text-[11px] font-semibold text-muted uppercase tracking-wider block mb-1">ACTIVE JOBS</span>
+            <span id="metric-active-jobs" class="text-2xl font-bold text-violet-400">0</span>
+          </div>
+          <div class="surface border border-custom p-4 rounded-2xl">
+            <span class="text-[11px] font-semibold text-muted uppercase tracking-wider block mb-1">TOTAL USERS</span>
+            <span id="metric-total-users" class="text-2xl font-bold text-white">0</span>
+          </div>
+          <div class="surface border border-custom p-4 rounded-2xl">
+            <span class="text-[11px] font-semibold text-muted uppercase tracking-wider block mb-1">24H REVENUE</span>
+            <span id="metric-revenue" class="text-2xl font-bold text-emerald-400">$0.00</span>
+          </div>
+          <div class="surface border border-custom p-4 rounded-2xl">
+            <span class="text-[11px] font-semibold text-muted uppercase tracking-wider block mb-1">GROSS MARGIN</span>
+            <span id="metric-margin" class="text-2xl font-bold text-indigo-400">80%</span>
+          </div>
+        </div>
+
+        <!-- Quick Provider Status Bar -->
+        <div class="surface border border-custom p-4 rounded-2xl flex justify-between items-center flex-wrap gap-2">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+            <span class="text-xs font-semibold text-white">Google Gemini</span>
+            <span class="text-[10px] text-muted">(gemini-3.6-flash)</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+            <span class="text-xs font-semibold text-white">Google Veo</span>
+            <span class="text-[10px] text-muted">(veo-3.1-generate-preview)</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+            <span class="text-xs font-semibold text-white">TTS & Storage</span>
+            <span class="text-[10px] text-muted">(Mounted)</span>
+          </div>
+        </div>
+
+        <!-- Recent Queue Activity Card -->
+        <div class="surface border border-custom rounded-2xl p-5 space-y-4">
+          <div class="flex justify-between items-center">
+            <h3 class="text-sm font-bold text-white tracking-wide">LIVE QUEUE MONITOR</h3>
+            <button onclick="switchTab('jobs')" class="text-xs text-violet-400 hover:text-violet-300 font-semibold">View All Jobs →</button>
+          </div>
+          <div id="overview-recent-jobs" class="space-y-3">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: JOBS MANAGER -->
+      <section id="tab-jobs" class="tab-content hidden space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-bold text-white">Job Queue Manager</h2>
+          <!-- Filter Buttons -->
+          <div class="flex space-x-1.5 overflow-x-auto pb-1">
+            <button onclick="filterJobs('all')" id="jfilter-all" class="job-filter-btn touch-btn px-3 py-1 text-xs rounded-xl surface-elevated border border-violet-500 text-white font-semibold">All</button>
+            <button onclick="filterJobs('queued')" id="jfilter-queued" class="job-filter-btn touch-btn px-3 py-1 text-xs rounded-xl surface-elevated border border-custom text-secondary hover:text-white">Queued</button>
+            <button onclick="filterJobs('generating')" id="jfilter-generating" class="job-filter-btn touch-btn px-3 py-1 text-xs rounded-xl surface-elevated border border-custom text-secondary hover:text-white">Active</button>
+            <button onclick="filterJobs('failed')" id="jfilter-failed" class="job-filter-btn touch-btn px-3 py-1 text-xs rounded-xl surface-elevated border border-custom text-secondary hover:text-white">Failed</button>
+          </div>
+        </div>
+
+        <div id="jobs-list-container" class="space-y-3">
+          <!-- Populated by JS as Mobile Touch Cards -->
+        </div>
+      </section>
+
+      <!-- TAB 3: USERS MANAGER -->
+      <section id="tab-users" class="tab-content hidden space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-bold text-white">User & Credit Operations</h2>
+        </div>
+
+        <!-- Search Bar -->
+        <div>
+          <input id="user-search-input" oninput="searchUsers()" type="text" placeholder="Search user by name or email..." class="w-full bg-surface border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 touch-btn" />
+        </div>
+
+        <div id="users-list-container" class="space-y-3">
+          <!-- Populated by JS as Mobile Cards -->
+        </div>
+      </section>
+
+      <!-- TAB 4: SYSTEM HEALTH -->
+      <section id="tab-system" class="tab-content hidden space-y-4">
+        <h2 class="text-lg font-bold text-white">System Infrastructure</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="surface border border-custom p-5 rounded-2xl space-y-3">
+            <h3 class="text-xs font-semibold text-muted uppercase tracking-wider">PROCESS & MEMORY</h3>
+            <div class="flex justify-between text-xs py-1 border-b border-custom">
+              <span class="text-secondary">Uptime</span>
+              <span id="sys-uptime" class="font-bold text-white">0s</span>
+            </div>
+            <div class="flex justify-between text-xs py-1 border-b border-custom">
+              <span class="text-secondary">Heap Memory</span>
+              <span id="sys-heap" class="font-bold text-violet-400">0 MB</span>
+            </div>
+            <div class="flex justify-between text-xs py-1 border-b border-custom">
+              <span class="text-secondary">RSS Memory</span>
+              <span id="sys-rss" class="font-bold text-white">0 MB</span>
+            </div>
+            <div class="flex justify-between text-xs py-1">
+              <span class="text-secondary">Node Version</span>
+              <span id="sys-node" class="font-bold text-white">v20</span>
+            </div>
+          </div>
+
+          <div class="surface border border-custom p-5 rounded-2xl space-y-3">
+            <h3 class="text-xs font-semibold text-muted uppercase tracking-wider">DATABASE & QUEUE</h3>
+            <div class="flex justify-between text-xs py-1 border-b border-custom">
+              <span class="text-secondary">Database Engine</span>
+              <span class="font-bold text-emerald-400">SQLite / Postgres Pool</span>
+            </div>
+            <div class="flex justify-between text-xs py-1 border-b border-custom">
+              <span class="text-secondary">Queue Worker State</span>
+              <span id="sys-queue-state" class="font-bold text-emerald-400">Processing</span>
+            </div>
+            <div class="flex justify-between text-xs py-1">
+              <span class="text-secondary">Active Leases</span>
+              <span class="font-bold text-white">1 Node</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: MORE (PROVIDERS, BILLING, AUDIT LOGS, SETTINGS) -->
+      <section id="tab-more" class="tab-content hidden space-y-4">
+        <h2 class="text-lg font-bold text-white">Operations & Extensions</h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- 1. Providers -->
+          <div onclick="openSubView('providers')" class="surface border border-custom p-4 rounded-2xl cursor-pointer hover:border-violet-500 transition flex items-center justify-between touch-btn">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl surface-elevated flex items-center justify-center text-violet-400">
+                <i class="fa-solid fa-brain"></i>
+              </div>
+              <div>
+                <span class="font-bold text-sm text-white block">AI Providers</span>
+                <span class="text-xs text-muted">Gemini, Veo & TTS status</span>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-muted text-xs"></i>
+          </div>
+
+          <!-- 2. Billing -->
+          <div onclick="openSubView('billing')" class="surface border border-custom p-4 rounded-2xl cursor-pointer hover:border-emerald-500 transition flex items-center justify-between touch-btn">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl surface-elevated flex items-center justify-center text-emerald-400">
+                <i class="fa-solid fa-receipt"></i>
+              </div>
+              <div>
+                <span class="font-bold text-sm text-white block">In-App Billing</span>
+                <span class="text-xs text-muted">Purchases & revenue ledger</span>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-muted text-xs"></i>
+          </div>
+
+          <!-- 3. Audit Logs -->
+          <div onclick="openSubView('audit')" class="surface border border-custom p-4 rounded-2xl cursor-pointer hover:border-indigo-500 transition flex items-center justify-between touch-btn">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl surface-elevated flex items-center justify-center text-indigo-400">
+                <i class="fa-solid fa-scroll"></i>
+              </div>
+              <div>
+                <span class="font-bold text-sm text-white block">Security & Audit Logs</span>
+                <span class="text-xs text-muted">Sanitized event stream</span>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-muted text-xs"></i>
+          </div>
+
+          <!-- 4. Settings -->
+          <div onclick="openSubView('settings')" class="surface border border-custom p-4 rounded-2xl cursor-pointer hover:border-gray-500 transition flex items-center justify-between touch-btn">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl surface-elevated flex items-center justify-center text-gray-300">
+                <i class="fa-solid fa-sliders"></i>
+              </div>
+              <div>
+                <span class="font-bold text-sm text-white block">Engine Settings</span>
+                <span class="text-xs text-muted">Concurrency & environment</span>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-muted text-xs"></i>
+          </div>
+        </div>
+
+        <!-- SUBVIEW CONTAINER (LOADED DYNAMICALLY) -->
+        <div id="more-subview-container" class="mt-6 hidden">
+          <!-- Dynamically injected subviews -->
+        </div>
+      </section>
+
+    </main>
+
+    <!-- MOBILE-FIRST BOTTOM NAVIGATION BAR -->
+    <nav class="fixed bottom-0 left-0 right-0 z-50 surface border-t border-custom px-2 py-1.5 flex justify-around items-center md:hidden">
+      <button onclick="switchTab('overview')" id="nav-overview" class="nav-btn flex flex-col items-center justify-center py-1 px-3 text-violet-400 font-semibold touch-btn">
+        <i class="fa-solid fa-chart-pie text-sm mb-0.5"></i>
+        <span class="text-[10px]">Overview</span>
+      </button>
+      <button onclick="switchTab('jobs')" id="nav-jobs" class="nav-btn flex flex-col items-center justify-center py-1 px-3 text-secondary hover:text-white touch-btn">
+        <i class="fa-solid fa-bolt text-sm mb-0.5"></i>
+        <span class="text-[10px]">Jobs</span>
+      </button>
+      <button onclick="switchTab('users')" id="nav-users" class="nav-btn flex flex-col items-center justify-center py-1 px-3 text-secondary hover:text-white touch-btn">
+        <i class="fa-solid fa-users text-sm mb-0.5"></i>
+        <span class="text-[10px]">Users</span>
+      </button>
+      <button onclick="switchTab('system')" id="nav-system" class="nav-btn flex flex-col items-center justify-center py-1 px-3 text-secondary hover:text-white touch-btn">
+        <i class="fa-solid fa-server text-sm mb-0.5"></i>
+        <span class="text-[10px]">System</span>
+      </button>
+      <button onclick="switchTab('more')" id="nav-more" class="nav-btn flex flex-col items-center justify-center py-1 px-3 text-secondary hover:text-white touch-btn">
+        <i class="fa-solid fa-ellipsis text-sm mb-0.5"></i>
+        <span class="text-[10px]">More</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- CREDIT ADJUSTMENT MODAL (MOBILE-FRIENDLY BOTTOM SHEET) -->
+  <div id="modal-adjust-credits" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="surface border border-custom max-w-md w-full rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 class="text-base font-bold text-white">Adjust User Credits</h3>
+        <button onclick="closeAdjustCreditsModal()" class="text-secondary hover:text-white touch-btn w-8 h-8">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <p id="adjust-user-label" class="text-xs text-secondary">User: creator@example.com</p>
+
+      <form onsubmit="submitCreditAdjustment(event)" class="space-y-4">
+        <input type="hidden" id="adjust-user-id" />
+        <div>
+          <label class="block text-xs font-semibold text-muted uppercase tracking-wider mb-1.5">AMOUNT (+ to grant, - to deduct)</label>
+          <input id="adjust-amount" type="number" required placeholder="+50 or -20" class="w-full bg-[#0B0C0F] border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 touch-btn" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-muted uppercase tracking-wider mb-1.5">REASON / AUDIT NOTE</label>
+          <input id="adjust-reason" type="text" placeholder="Promo grant / manual refund" class="w-full bg-[#0B0C0F] border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 touch-btn" />
+        </div>
+        <button type="submit" class="w-full brand-gradient text-white font-bold rounded-xl shadow-lg shadow-purple-900/30 hover:opacity-95 transition text-sm touch-btn">
+          Save Adjustment
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let adminToken = localStorage.getItem('admin_key') || null;
+    let currentTab = 'overview';
+    let cachedJobs = [];
+    let cachedUsers = [];
+    let isQueuePaused = false;
+    let activeJobFilter = 'all';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (adminToken) {
+        verifyAdminSession();
+      } else {
+        showAuthView();
+      }
+    });
+
+    async function adminApi(endpoint, options = {}) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-admin-key': adminToken || '',
+        ...(options.headers || {})
+      };
+      const res = await fetch(endpoint, { ...options, headers });
+      if (res.status === 401) {
+        adminLogout();
+        throw new Error('Unauthorized');
+      }
+      return res.json();
+    }
+
+    function showAuthView() {
+      document.getElementById('admin-auth-view').classList.remove('hidden');
+      document.getElementById('admin-app-view').classList.add('hidden');
+    }
+
+    function showAppView() {
+      document.getElementById('admin-auth-view').classList.add('hidden');
+      document.getElementById('admin-app-view').classList.remove('hidden');
+      loadOverview();
+    }
+
+    async function handleAdminLogin(e) {
+      e.preventDefault();
+      const key = document.getElementById('admin-key-input').value.trim();
+      const errBox = document.getElementById('auth-err');
+      errBox.classList.add('hidden');
+
+      adminToken = key;
+      try {
+        const res = await adminApi('/api/admin/overview');
+        if (res.success) {
+          localStorage.setItem('admin_key', key);
+          showAppView();
+        } else {
+          errBox.innerText = res.error?.message || 'Invalid key.';
+          errBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        errBox.innerText = 'Authentication failed. Check your admin access key.';
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    function adminLogout() {
+      localStorage.removeItem('admin_key');
+      adminToken = null;
+      showAuthView();
+    }
+
+    function switchTab(tabId) {
+      currentTab = tabId;
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('text-violet-400', 'font-semibold');
+        btn.classList.add('text-secondary');
+      });
+      const activeNav = document.getElementById(`nav-${tabId}`);
+      if (activeNav) {
+        activeNav.classList.remove('text-secondary');
+        activeNav.classList.add('text-violet-400', 'font-semibold');
+      }
+
+      if (tabId === 'overview') loadOverview();
+      if (tabId === 'jobs') loadJobs();
+      if (tabId === 'users') loadUsers();
+      if (tabId === 'system') loadSystemHealth();
+    }
+
+    function refreshCurrentTab() {
+      switchTab(currentTab);
+    }
+
+    async function verifyAdminSession() {
+      try {
+        const res = await adminApi('/api/admin/overview');
+        if (res.success) {
+          showAppView();
+        } else {
+          adminLogout();
+        }
+      } catch (_) {
+        adminLogout();
+      }
+    }
+
+    async function loadOverview() {
+      try {
+        const res = await adminApi('/api/admin/overview');
+        if (res.success && res.data) {
+          const d = res.data;
+          document.getElementById('metric-active-jobs').innerText = d.activeJobs;
+          document.getElementById('metric-total-users').innerText = d.totalUsers;
+          document.getElementById('metric-revenue').innerText = `$${(d.metrics.financials?.totalEstimatedRevenueUsd || 0).toFixed(2)}`;
+          document.getElementById('metric-margin').innerText = `${Math.round(d.metrics.financials?.grossMarginPercent || 80)}%`;
+
+          isQueuePaused = d.isQueuePaused;
+          updateQueueUiState(isQueuePaused);
+
+          // Render recent 3 jobs in overview
+          loadRecentOverviewJobs();
+        }
+      } catch (_) {}
+    }
+
+    function updateQueueUiState(paused) {
+      const ind = document.getElementById('queue-status-indicator');
+      const txt = document.getElementById('queue-status-text');
+      const btn = document.getElementById('btn-emergency-pause');
+      const btnTxt = document.getElementById('btn-pause-text');
+
+      if (paused) {
+        ind.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>';
+        txt.innerText = 'Queue Paused';
+        txt.className = 'text-[10px] text-amber-400 font-semibold uppercase tracking-wider';
+        btn.className = 'touch-btn px-3 py-1.5 rounded-xl border border-emerald-500/40 text-emerald-300 bg-emerald-500/10 text-xs font-bold transition';
+        btn.innerHTML = '<i class="fa-solid fa-play mr-1.5"></i> Resume';
+      } else {
+        ind.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>';
+        txt.innerText = 'Queue Active';
+        txt.className = 'text-[10px] text-emerald-400 font-semibold uppercase tracking-wider';
+        btn.className = 'touch-btn px-3 py-1.5 rounded-xl border border-amber-500/40 text-amber-300 bg-amber-500/10 text-xs font-bold transition';
+        btn.innerHTML = '<i class="fa-solid fa-pause mr-1.5"></i> Pause';
+      }
+    }
+
+    async function toggleEmergencyQueue() {
+      const confirmAction = confirm(isQueuePaused ? "Resume video generation job queue?" : "Emergency Pause video generation job queue?");
+      if (!confirmAction) return;
+
+      try {
+        const res = await adminApi('/api/admin/system/toggle-pause', { method: 'POST' });
+        if (res.success) {
+          isQueuePaused = res.isQueuePaused;
+          updateQueueUiState(isQueuePaused);
+        }
+      } catch (_) {}
+    }
+
+    async function loadRecentOverviewJobs() {
+      try {
+        const res = await adminApi('/api/admin/jobs?limit=3');
+        const container = document.getElementById('overview-recent-jobs');
+        if (res.success && res.data.length > 0) {
+          container.innerHTML = res.data.map(renderJobCard).join('');
+        } else {
+          container.innerHTML = '<p class="text-xs text-muted">No recent jobs recorded.</p>';
+        }
+      } catch (_) {}
+    }
+
+    async function loadJobs() {
+      try {
+        const res = await adminApi('/api/admin/jobs?limit=50');
+        const container = document.getElementById('jobs-list-container');
+        if (res.success) {
+          cachedJobs = res.data;
+          renderFilteredJobs();
+        }
+      } catch (_) {}
+    }
+
+    function filterJobs(status) {
+      activeJobFilter = status;
+      document.querySelectorAll('.job-filter-btn').forEach(b => {
+        b.classList.remove('border-violet-500', 'text-white');
+        b.classList.add('border-custom', 'text-secondary');
+      });
+      const active = document.getElementById(`jfilter-${status}`);
+      if (active) {
+        active.classList.remove('border-custom', 'text-secondary');
+        active.classList.add('border-violet-500', 'text-white');
+      }
+      renderFilteredJobs();
+    }
+
+    function renderFilteredJobs() {
+      const container = document.getElementById('jobs-list-container');
+      const list = activeJobFilter === 'all' 
+        ? cachedJobs 
+        : cachedJobs.filter(j => j.status === activeJobFilter || (activeJobFilter === 'generating' && ['planning', 'processing'].includes(j.status)));
+
+      if (list.length === 0) {
+        container.innerHTML = '<div class="surface border border-custom p-8 rounded-2xl text-center text-xs text-muted">No jobs match this filter.</div>';
+        return;
+      }
+      container.innerHTML = list.map(renderJobCard).join('');
+    }
+
+    function renderJobCard(j) {
+      const isFailed = j.status === 'failed';
+      const isRunning = ['planning', 'generating', 'processing'].includes(j.status);
+      const isQueued = j.status === 'queued';
+
+      let statusBadge = '<span class="text-emerald-400 text-xs font-bold">● Completed</span>';
+      if (isFailed) statusBadge = '<span class="text-red-400 text-xs font-bold">● Failed</span>';
+      if (isRunning) statusBadge = '<span class="text-violet-400 text-xs font-bold animate-pulse">◌ Active</span>';
+      if (isQueued) statusBadge = '<span class="text-amber-400 text-xs font-bold">◌ Queued</span>';
+
+      return `
+        <div class="surface border border-custom p-4 rounded-2xl space-y-2.5">
+          <div class="flex justify-between items-start">
+            <div>
+              <h4 class="font-bold text-sm text-white leading-snug">${j.video_title || 'Untitled Video'}</h4>
+              <span class="text-[11px] text-secondary">${j.user_email || j.user_id}</span>
+            </div>
+            ${statusBadge}
+          </div>
+
+          <div class="flex justify-between items-center text-xs text-muted pt-1">
+            <span>Type: <strong class="text-white">${j.video_type || 'Short'}</strong></span>
+            <span>Attempts: ${j.attempt_count}/${j.max_attempts}</span>
+          </div>
+
+          ${j.error_message ? `<p class="text-xs text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded-xl">${j.error_message}</p>` : ''}
+
+          <div class="flex space-x-2 pt-2">
+            ${isFailed ? `
+              <button onclick="retryJob('${j.id}')" class="flex-1 touch-btn rounded-xl bg-violet-600/20 border border-violet-500/40 text-violet-300 text-xs font-semibold hover:bg-violet-600/30 transition">
+                <i class="fa-solid fa-rotate-right mr-1.5"></i> Retry Job
+              </button>
+            ` : ''}
+            ${isRunning || isQueued ? `
+              <button onclick="cancelJob('${j.id}')" class="flex-1 touch-btn rounded-xl bg-red-600/10 border border-red-500/30 text-red-400 text-xs font-semibold hover:bg-red-600/20 transition">
+                <i class="fa-solid fa-ban mr-1.5"></i> Cancel Job
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    async function retryJob(jobId) {
+      try {
+        const res = await adminApi(`/api/admin/jobs/${jobId}/retry`, { method: 'POST' });
+        if (res.success) {
+          alert('Job re-queued successfully.');
+          loadJobs();
+        }
+      } catch (_) {}
+    }
+
+    async function cancelJob(jobId) {
+      if (!confirm("Are you sure you want to cancel this job?")) return;
+      try {
+        const res = await adminApi(`/api/admin/jobs/${jobId}/cancel`, { method: 'POST', body: JSON.stringify({ reason: 'Admin cancelled' }) });
+        if (res.success) {
+          alert('Job cancelled.');
+          loadJobs();
+        }
+      } catch (_) {}
+    }
+
+    async function loadUsers() {
+      try {
+        const res = await adminApi('/api/admin/users');
+        if (res.success) {
+          cachedUsers = res.data;
+          renderUsersList(cachedUsers);
+        }
+      } catch (_) {}
+    }
+
+    function searchUsers() {
+      const q = document.getElementById('user-search-input').value.toLowerCase();
+      const filtered = cachedUsers.filter(u => u.email.toLowerCase().includes(q) || u.name.toLowerCase().includes(q));
+      renderUsersList(filtered);
+    }
+
+    function renderUsersList(users) {
+      const container = document.getElementById('users-list-container');
+      if (users.length === 0) {
+        container.innerHTML = '<div class="surface border border-custom p-8 rounded-2xl text-center text-xs text-muted">No users found.</div>';
+        return;
+      }
+      container.innerHTML = users.map(u => `
+        <div class="surface border border-custom p-4 rounded-2xl space-y-3">
+          <div class="flex justify-between items-start">
+            <div>
+              <h4 class="font-bold text-sm text-white">${u.name}</h4>
+              <span class="text-xs text-secondary">${u.email}</span>
+            </div>
+            <span class="text-xs font-bold ${u.status === 'active' ? 'text-emerald-400' : 'text-amber-400'} capitalize">● ${u.status}</span>
+          </div>
+
+          <div class="flex justify-between items-center text-xs bg-[#0B0C0F] p-2.5 rounded-xl border border-custom">
+            <span>Wallet: <strong class="text-violet-400 font-bold">${u.credits} Credits</strong></span>
+            <span>Videos: <strong class="text-white">${u.video_count}</strong></span>
+          </div>
+
+          <div class="flex space-x-2 pt-1">
+            <button onclick="openAdjustCreditsModal('${u.id}', '${u.email}')" class="flex-1 touch-btn rounded-xl surface-elevated border border-violet-500/40 text-violet-300 text-xs font-semibold hover:border-violet-500 transition">
+              <i class="fa-solid fa-coins mr-1.5"></i> Adjust Credits
+            </button>
+            <button onclick="toggleUserStatus('${u.id}', '${u.status === 'active' ? 'suspended' : 'active'}')" class="touch-btn px-4 rounded-xl surface-elevated border border-custom text-xs text-secondary hover:text-white transition">
+              ${u.status === 'active' ? 'Suspend' : 'Activate'}
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openAdjustCreditsModal(userId, email) {
+      document.getElementById('adjust-user-id').value = userId;
+      document.getElementById('adjust-user-label').innerText = `User: ${email}`;
+      document.getElementById('adjust-amount').value = '';
+      document.getElementById('adjust-reason').value = '';
+      document.getElementById('modal-adjust-credits').classList.remove('hidden');
+    }
+
+    function closeAdjustCreditsModal() {
+      document.getElementById('modal-adjust-credits').classList.add('hidden');
+    }
+
+    async function submitCreditAdjustment(e) {
+      e.preventDefault();
+      const userId = document.getElementById('adjust-user-id').value;
+      const amount = parseInt(document.getElementById('adjust-amount').value, 10);
+      const reason = document.getElementById('adjust-reason').value.trim();
+
+      try {
+        const res = await adminApi(`/api/admin/users/${userId}/adjust-credits`, {
+          method: 'POST',
+          body: JSON.stringify({ amount, reason })
+        });
+        if (res.success) {
+          alert('Credit adjustment completed.');
+          closeAdjustCreditsModal();
+          loadUsers();
+        }
+      } catch (err) {
+        alert('Failed to adjust credits.');
+      }
+    }
+
+    async function toggleUserStatus(userId, newStatus) {
+      try {
+        const res = await adminApi(`/api/admin/users/${userId}/status`, {
+          method: 'POST',
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (res.success) {
+          loadUsers();
+        }
+      } catch (_) {}
+    }
+
+    async function loadSystemHealth() {
+      try {
+        const res = await adminApi('/api/admin/system/health');
+        if (res.success && res.data) {
+          const d = res.data;
+          document.getElementById('sys-uptime').innerText = `${Math.floor(d.uptimeSeconds / 60)}m ${d.uptimeSeconds % 60}s`;
+          document.getElementById('sys-heap').innerText = `${d.memory.heapUsedMb} MB`;
+          document.getElementById('sys-rss').innerText = `${d.memory.rssMb} MB`;
+          document.getElementById('sys-node').innerText = d.nodeVersion;
+          document.getElementById('sys-queue-state').innerText = d.isQueuePaused ? 'PAUSED' : 'PROCESSING';
+          document.getElementById('sys-queue-state').className = d.isQueuePaused ? 'font-bold text-amber-400' : 'font-bold text-emerald-400';
+        }
+      } catch (_) {}
+    }
+
+    async function openSubView(view) {
+      const container = document.getElementById('more-subview-container');
+      container.classList.remove('hidden');
+
+      if (view === 'providers') {
+        const res = await adminApi('/api/admin/providers');
+        const p = res.data;
+        container.innerHTML = `
+          <div class="surface border border-custom p-5 rounded-2xl space-y-4">
+            <h3 class="text-sm font-bold text-white">AI Provider Infrastructure</h3>
+            <div class="space-y-2 text-xs">
+              <div class="p-3 surface-elevated rounded-xl border border-custom flex justify-between items-center">
+                <div>
+                  <span class="font-bold text-white block">Google Gemini</span>
+                  <span class="text-muted">Model: ${p.gemini.model}</span>
+                </div>
+                <span class="text-emerald-400 font-bold">● Active (${p.gemini.hasKey ? 'Key Present' : 'No Key'})</span>
+              </div>
+              <div class="p-3 surface-elevated rounded-xl border border-custom flex justify-between items-center">
+                <div>
+                  <span class="font-bold text-white block">Google Veo Video Engine</span>
+                  <span class="text-muted">Model: ${p.veo.model} (Max Concurrency: ${p.veo.maxConcurrent})</span>
+                </div>
+                <span class="text-emerald-400 font-bold">● Active</span>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (view === 'billing') {
+        const res = await adminApi('/api/admin/billing/transactions');
+        container.innerHTML = `
+          <div class="surface border border-custom p-5 rounded-2xl space-y-4">
+            <h3 class="text-sm font-bold text-white">In-App Purchase Transactions</h3>
+            <div class="space-y-2 text-xs">
+              ${res.data.length === 0 ? '<p class="text-muted">No in-app purchases recorded yet.</p>' : res.data.map(t => `
+                <div class="p-3 surface-elevated rounded-xl border border-custom flex justify-between items-center">
+                  <div>
+                    <span class="font-bold text-white block">${t.product_id} (+${t.credits_granted} cr)</span>
+                    <span class="text-muted">${t.user_email} · ${new Date(t.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <span class="text-emerald-400 font-bold">$${t.price_usd || '10.00'}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (view === 'audit') {
+        const res = await adminApi('/api/admin/audit-logs');
+        container.innerHTML = `
+          <div class="surface border border-custom p-5 rounded-2xl space-y-4">
+            <h3 class="text-sm font-bold text-white">System Audit Stream</h3>
+            <div class="space-y-2 text-xs font-mono">
+              ${res.data.map(l => `
+                <div class="p-2.5 surface-elevated rounded-xl border border-custom">
+                  <span class="text-muted text-[10px]">${new Date(l.timestamp).toLocaleTimeString()}</span>
+                  <span class="font-bold text-violet-400 uppercase text-[10px] ml-1">[${l.type}]</span>
+                  <p class="text-white text-xs mt-0.5">${l.message}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (view === 'settings') {
+        container.innerHTML = `
+          <div class="surface border border-custom p-5 rounded-2xl space-y-4">
+            <h3 class="text-sm font-bold text-white">Engine Configuration</h3>
+            <div class="space-y-2 text-xs">
+              <div class="p-3 surface-elevated rounded-xl border border-custom flex justify-between items-center">
+                <span class="text-secondary">Rate Limit Window</span>
+                <span class="text-white font-bold">120 req / min</span>
+              </div>
+              <div class="p-3 surface-elevated rounded-xl border border-custom flex justify-between items-center">
+                <span class="text-secondary">Worker Polling Rate</span>
+                <span class="text-white font-bold">2500 ms</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>

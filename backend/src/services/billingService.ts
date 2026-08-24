@@ -161,6 +161,16 @@ export class BillingService {
   public getCatalog(): InAppProduct[] {
     return Object.values(IN_APP_PACKAGES);
   }
+
+  public async listPurchases(limit = 50, offset = 0): Promise<any[]> {
+    return db.query(
+      `SELECT p.*, u.name AS user_name, u.email AS user_email
+       FROM in_app_purchases p
+       JOIN users u ON u.id = p.user_id
+       ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+  }
 }
 
 export const billingService = new BillingService();

@@ -50,12 +50,27 @@ export interface DbJobRecord {
 }
 
 export class PersistentJobQueue {
+  private static isGlobalPaused: boolean = false;
   private workerId: string = `worker_${uuidv4().slice(0, 8)}`;
   private isProcessing = false;
   private workerInterval: NodeJS.Timeout | null = null;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private activeJobId: string | null = null;
   private readonly POLL_INTERVAL_MS = 2500;
+
+  public static pauseGlobalQueue(): void {
+    PersistentJobQueue.isGlobalPaused = true;
+    console.log('[JobQueue] Global job queue PAUSED by Admin emergency control.');
+  }
+
+  public static resumeGlobalQueue(): void {
+    PersistentJobQueue.isGlobalPaused = false;
+    console.log('[JobQueue] Global job queue RESUMED by Admin emergency control.');
+  }
+
+  public static isPaused(): boolean {
+    return PersistentJobQueue.isGlobalPaused;
+  }
 
   /**
    * Starts the background queue worker and runs startup crash recovery.
@@ -254,6 +269,7 @@ export class PersistentJobQueue {
    * Processes the next claimed job.
    */
   public async processNextJob(): Promise<boolean> {
+    if (PersistentJobQueue.isGlobalPaused) return false;
     if (this.isProcessing) return false;
 
     const job = await this.claimNextJob();
@@ -551,6 +567,49 @@ export class PersistentJobQueue {
       }
     }
     return staleJobs.length;
+  }
+
+  public async listAllJobs(limit = 50, offset = 0, statusFilter?: string): Promise<any[]> {
+    let sql = `
+      SELECT j.*, u.name AS user_name, u.email AS user_email, v.title AS video_title, v.type AS video_type
+      FROM video_jobs j
+      JOIN users u ON u.id = j.user_id
+      LEFT JOIN videos v ON v.id = j.video_id
+    `;
+    const params: any[] = [];
+    if (statusFilter && statusFilter !== 'all') {
+      params.push(statusFilter);
+      sql += ` WHERE j.status = $${params.length}`;
+    }
+    params.push(limit);
+    sql += ` ORDER BY j.created_at DESC LIMIT $${params.length}`;
+    params.push(offset);
+    sql += ` OFFSET $${params.length}`;
+
+    return db.query(sql, params);
+  }
+
+  public async retryJob(jobId: string): Promise<boolean> {
+    const res = await db.execute(
+      `UPDATE video_jobs 
+       SET status = 'queued', progress = 0, current_step = 'Queued for retry by Admin', 
+           error_code = NULL, error_message = NULL, attempt_count = 0, next_retry_at = NULL, 
+           lease_expires_at = NULL, worker_id = NULL, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $1`,
+      [jobId]
+    );
+    return res.rowCount > 0;
+  }
+
+  public async cancelJob(jobId: string, reason = 'Cancelled by Admin'): Promise<boolean> {
+    const job = await db.queryOne<DbJobRecord>('SELECT * FROM video_jobs WHERE id = $1', [jobId]);
+    if (!job || job.status === 'completed' || job.status === 'cancelled') return false;
+
+    await db.execute(
+      `UPDATE video_jobs SET status = 'cancelled', error_message = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+      [reason, jobId]
+    );
+    return true;
   }
 }
 

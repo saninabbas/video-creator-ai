@@ -11,6 +11,7 @@ import { videoRouter } from './routes/videoRoutes.js';
 import { creditRouter } from './routes/creditRoutes.js';
 import { notificationRouter } from './routes/notificationRoutes.js';
 import { billingRouter } from './routes/billingRoutes.js';
+import { adminRouter } from './routes/adminRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -21,6 +22,12 @@ app.use(standardLimiter.middleware(120, 60 * 1000));
 
 // Serve generated media assets
 app.use('/media', express.static(path.resolve(config.STORAGE_DIR)));
+
+// Serve Admin Panel at /admin
+app.use('/admin', express.static(path.resolve(__dirname, 'public/admin')));
+app.use('/admin', express.static(path.resolve(__dirname, '../src/public/admin')));
+app.use('/admin', express.static(path.resolve(process.cwd(), 'src/public/admin')));
+app.use('/admin', express.static(path.resolve(process.cwd(), 'backend/src/public/admin')));
 
 // Serve Creator Web Dashboard for instant browser testing
 app.use(express.static(path.resolve(__dirname, 'public')));
@@ -49,6 +56,7 @@ app.use('/api/videos', videoRouter);
 app.use('/api/credits', creditRouter);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/billing', billingRouter);
+app.use('/api/admin', adminRouter);
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -86,7 +94,7 @@ export async function startServer() {
   }
 }
 
-if (require.main === module || !process.env.TEST_MODE) {
+if (require.main === module && !process.env.TEST_MODE) {
   startServer();
 }
 
