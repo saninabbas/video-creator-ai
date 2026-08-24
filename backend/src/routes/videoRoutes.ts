@@ -28,7 +28,7 @@ const createVideoSchema = z.object({
  * POST /api/videos/create
  * Initiates video generation, enforces server-side duration limits & pricing, deducts credits, and returns queued job ID.
  */
-videoRouter.post('/create', generationLimiter.middleware(10), async (req: Request, res: Response) => {
+videoRouter.post(['/create', '/'], generationLimiter.middleware(10), async (req: Request, res: Response) => {
   try {
     const validated = createVideoSchema.parse(req.body);
 
@@ -59,6 +59,7 @@ videoRouter.post('/create', generationLimiter.middleware(10), async (req: Reques
     });
 
     res.status(202).json({
+      success: true,
       message: 'Video generation started.',
       jobId: enqueued.jobId,
       videoId: enqueued.videoId,

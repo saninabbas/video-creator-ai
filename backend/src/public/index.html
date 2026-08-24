@@ -555,16 +555,16 @@
       btn.disabled = true;
 
       try {
-        const res = await apiRequest('/api/videos', { method: 'POST', body: JSON.stringify(payload) });
-        if (res.success) {
+        const res = await apiRequest('/api/videos/create', { method: 'POST', body: JSON.stringify(payload) });
+        if (res.jobId || res.videoId || res.success) {
           closeCreateModal();
           verifySession();
           loadUserVideos();
         } else {
-          alert(res.error?.message || 'Generation failed.');
+          alert(res.error?.message || res.message || 'Generation failed.');
         }
       } catch (err) {
-        alert('Network request failed.');
+        alert('Network request failed. Please check connection and try again.');
       } finally {
         btn.innerText = 'GENERATE VIDEO →';
         btn.disabled = false;
