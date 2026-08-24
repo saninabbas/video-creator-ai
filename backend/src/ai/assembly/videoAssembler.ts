@@ -3,6 +3,7 @@ import path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import { AspectRatio } from '../../types/script.js';
+import { getVisualForPrompt } from './visualLibrary.js';
 
 if (ffmpegStatic) {
   ffmpeg.setFfmpegPath(ffmpegStatic);
@@ -77,7 +78,8 @@ export class VideoAssembler {
     outputPath: string,
     durationSeconds: number,
     aspectRatio: AspectRatio,
-    sceneTitle: string
+    sceneTitle: string,
+    sceneIndex: number = 1
   ): Promise<string> {
     const width = aspectRatio === '9:16' ? 720 : 1280;
     const height = aspectRatio === '9:16' ? 1280 : 720;
@@ -88,14 +90,12 @@ export class VideoAssembler {
     }
 
     const tempImgPath = path.join(dir, `frame_${Date.now()}_${Math.floor(Math.random()*10000)}.jpg`);
-    const promptQuery = sceneTitle.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'cinematic ultra realistic 4k shot';
-    const seed = Math.floor(Math.random() * 1000000);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(promptQuery + ' cinematic photorealistic 4k')}` +
-      `?width=${width}&height=${height}&nologo=true&seed=${seed}`;
+    const imageUrl = getVisualForPrompt(sceneTitle, sceneIndex);
+    console.log(`[VideoAssembler] Fetching HD visual for scene "${sceneTitle.substring(0, 40)}...": ${imageUrl}`);
 
     let imageDownloaded = false;
     try {
-      imageDownloaded = await this.downloadImage(imageUrl, tempImgPath, 7000);
+      imageDownloaded = await this.downloadImage(imageUrl, tempImgPath, 8000);
     } catch (_) {
       imageDownloaded = false;
     }
@@ -114,7 +114,7 @@ export class VideoAssembler {
           .audioCodec('aac')
           .outputOptions([
             '-pix_fmt yuv420p',
-            `-vf scale=${width}:${height},zoompan=z='min(zoom+0.0015,1.25)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${totalFrames}:s=${width}x${height}:fps=30`,
+            `-vf scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},zoompan=z='min(zoom+0.0012,1.2)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${totalFrames}:s=${width}x${height}:fps=30`,
             '-preset fast',
             '-shortest'
           ]);
@@ -136,6 +136,7 @@ export class VideoAssembler {
           if (fs.existsSync(tempImgPath)) {
             try { fs.unlinkSync(tempImgPath); } catch (_) {}
           }
+          console.log(`[VideoAssembler] Generated motion scene clip -> ${outputPath}`);
           resolve(outputPath);
         })
         .on('error', (err) => {
@@ -165,32 +166,43 @@ export class VideoAssembler {
     return new Promise((resolve) => {
       const https = require('https');
       const http = require('http');
-      const file = fs.createWriteStream(dest);
-      const client = url.startsWith('https') ? https : http;
-      const req = client.get(url, { timeout: timeoutMs }, (res: any) => {
-        if (res.statusCode === 200) {
-          res.pipe(file);
-          file.on('finish', () => {
-            file.close();
-            resolve(true);
-          });
-        } else {
-          file.close();
+
+      const fetchUrl = (currentUrl: string, redirectsRemaining: number) => {
+        if (redirectsRemaining <= 0) {
+          return resolve(false);
+        }
+        const client = currentUrl.startsWith('https') ? https : http;
+        const req = client.get(currentUrl, { timeout: timeoutMs }, (res: any) => {
+          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            return fetchUrl(res.headers.location, redirectsRemaining - 1);
+          }
+          if (res.statusCode === 200) {
+            const file = fs.createWriteStream(dest);
+            res.pipe(file);
+            file.on('finish', () => {
+              file.close();
+              resolve(true);
+            });
+            file.on('error', () => {
+              if (fs.existsSync(dest)) fs.unlinkSync(dest);
+              resolve(false);
+            });
+          } else {
+            resolve(false);
+          }
+        });
+        req.on('error', () => {
           if (fs.existsSync(dest)) fs.unlinkSync(dest);
           resolve(false);
-        }
-      });
-      req.on('error', () => {
-        file.close();
-        if (fs.existsSync(dest)) fs.unlinkSync(dest);
-        resolve(false);
-      });
-      req.on('timeout', () => {
-        req.destroy();
-        file.close();
-        if (fs.existsSync(dest)) fs.unlinkSync(dest);
-        resolve(false);
-      });
+        });
+        req.on('timeout', () => {
+          req.destroy();
+          if (fs.existsSync(dest)) fs.unlinkSync(dest);
+          resolve(false);
+        });
+      };
+
+      fetchUrl(url, 3);
     });
   }
 
