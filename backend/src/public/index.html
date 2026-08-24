@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Video Studio — Creator Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    body { background-color: #0f1117; color: #f9fafb; font-family: system-ui, -apple-system, sans-serif; }
+    .card-bg { background-color: #1a1d26; }
+    .border-custom { border-color: #2a2e3d; }
+    .purple-gradient { background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); }
+    .blue-gradient { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP NAV -->
+  <header class="border-b border-custom bg-[#131620] sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3.5 flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl purple-gradient flex items-center justify-center shadow-lg shadow-purple-900/30">
+          <i class="fa-solid fa-wand-magic-sparkles text-white text-sm"></i>
+        </div>
+        <span class="font-bold text-lg tracking-tight text-white">AI Video Studio</span>
+      </div>
+
+      <div id="nav-auth-section" class="flex items-center space-x-4">
+        <div id="credit-badge" class="hidden items-center bg-[#242836] px-3 py-1.5 rounded-full border border-custom text-xs font-semibold text-amber-400">
+          <i class="fa-solid fa-bolt mr-1.5"></i> <span id="credit-count">50</span> Credits
+        </div>
+        <span id="user-name" class="hidden text-sm text-gray-300 font-medium"></span>
+        <button id="btn-logout" onclick="logout()" class="hidden text-xs text-red-400 hover:text-red-300 font-medium px-3 py-1.5 rounded-lg border border-red-500/30 hover:bg-red-500/10">
+          Log Out
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-8">
+
+    <!-- 1. AUTH SCREEN (LOGIN / REGISTER) -->
+    <div id="view-auth" class="max-w-md mx-auto my-12 card-bg p-8 rounded-2xl border border-custom shadow-2xl">
+      <div class="text-center mb-8">
+        <h2 id="auth-title" class="text-2xl font-bold text-white mb-2">Welcome Creator</h2>
+        <p id="auth-subtitle" class="text-sm text-gray-400">Sign in to generate stunning AI Shorts & Videos</p>
+      </div>
+
+      <div id="auth-error" class="hidden mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs"></div>
+
+      <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+        <div id="field-name" class="hidden">
+          <label class="block text-xs font-medium text-gray-400 mb-1.5">Your Name or Channel</label>
+          <input id="input-name" type="text" placeholder="Creator Name" class="w-full bg-[#131620] border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1.5">Email Address</label>
+          <input id="input-email" type="email" required placeholder="creator@example.com" class="w-full bg-[#131620] border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1.5">Password</label>
+          <input id="input-password" type="password" required placeholder="••••••••" class="w-full bg-[#131620] border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500" />
+        </div>
+
+        <button type="submit" id="auth-submit-btn" class="w-full purple-gradient text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-900/30 hover:opacity-95 transition text-sm mt-2">
+          Log In
+        </button>
+      </form>
+
+      <div class="text-center mt-6">
+        <button id="auth-toggle-btn" onclick="toggleAuthMode()" class="text-xs text-purple-400 hover:text-purple-300 font-medium">
+          Don't have an account? Sign up & get 50 Free Credits
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. CREATOR DASHBOARD -->
+    <div id="view-dashboard" class="hidden space-y-10">
+
+      <!-- HERO CREATE CARDS -->
+      <div>
+        <h1 class="text-2xl font-bold text-white mb-2">Create New Video</h1>
+        <p class="text-sm text-gray-400 mb-6">User gives an idea → AI creates the video in seconds</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- CREATE SHORT -->
+          <div onclick="openCreateModal('short')" class="card-bg border border-purple-500/40 p-6 rounded-2xl cursor-pointer hover:border-purple-500 transition hover:shadow-xl hover:shadow-purple-900/20 group relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10"></div>
+            <span class="inline-block bg-purple-900/50 text-purple-300 border border-purple-500/30 text-[11px] font-bold px-2.5 py-1 rounded-md mb-4 uppercase tracking-wider">9:16 Vertical</span>
+            <h3 class="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition">Create Short / Reel</h3>
+            <p class="text-xs text-gray-400 mb-4">15s to 90s • TikTok, YouTube Shorts & Instagram Reels</p>
+            <div class="flex items-center text-xs font-semibold text-purple-400">
+              <span>Start Generator (10 Credits)</span>
+              <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition"></i>
+            </div>
+          </div>
+
+          <!-- CREATE LONG -->
+          <div onclick="openCreateModal('long')" class="card-bg border border-blue-500/30 p-6 rounded-2xl cursor-pointer hover:border-blue-500 transition hover:shadow-xl hover:shadow-blue-900/20 group relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10"></div>
+            <span class="inline-block bg-blue-900/50 text-blue-300 border border-blue-500/30 text-[11px] font-bold px-2.5 py-1 rounded-md mb-4 uppercase tracking-wider">16:9 Widescreen</span>
+            <h3 class="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition">Create Long Video</h3>
+            <p class="text-xs text-gray-400 mb-4">8 min to 30 min • Full YouTube Documentaries & Deep-Dives</p>
+            <div class="flex items-center text-xs font-semibold text-blue-400">
+              <span>Start Generator (50 Credits)</span>
+              <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MY VIDEOS LIST -->
+      <div>
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-xl font-bold text-white">Your Video Library</h2>
+          <button onclick="loadUserVideos()" class="text-xs text-gray-400 hover:text-white flex items-center">
+            <i class="fa-solid fa-rotate-right mr-1.5"></i> Refresh
+          </button>
+        </div>
+
+        <div id="video-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <!-- Populated by JS -->
+        </div>
+
+        <div id="video-empty" class="hidden card-bg border border-custom rounded-2xl p-12 text-center">
+          <i class="fa-solid fa-film text-4xl text-gray-600 mb-3"></i>
+          <p class="text-gray-400 text-sm">No videos yet. Tap "Create Short" above to generate your first AI video!</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 3. GENERATION MODAL -->
+    <div id="modal-create" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+      <div class="card-bg border border-custom max-w-lg w-full rounded-2xl p-6 shadow-2xl relative">
+        <button onclick="closeCreateModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+
+        <h3 id="modal-create-title" class="text-xl font-bold text-white mb-1">Create AI Short</h3>
+        <p class="text-xs text-gray-400 mb-6">Enter your topic and let Gemini & Veo 3.1 do the work</p>
+
+        <form onsubmit="handleCreateVideo(event)" class="space-y-4">
+          <input type="hidden" id="modal-video-type" value="short" />
+
+          <div>
+            <label class="block text-xs font-medium text-gray-300 mb-1.5">What is your video about?</label>
+            <textarea id="modal-topic" required rows="3" placeholder="e.g. 5 incredible facts about the deep ocean that sound like science fiction" class="w-full bg-[#131620] border border-custom rounded-xl p-3.5 text-sm text-white focus:outline-none focus:border-purple-500"></textarea>
+          </div>
+
+          <div id="container-duration-short">
+            <label class="block text-xs font-medium text-gray-300 mb-1.5">Duration</label>
+            <div class="grid grid-cols-4 gap-2">
+              <label class="cursor-pointer text-center py-2 rounded-lg border border-custom bg-[#131620] text-xs font-medium text-gray-300 hover:border-purple-500 has-[:checked]:border-purple-500 has-[:checked]:bg-purple-900/30 has-[:checked]:text-white">
+                <input type="radio" name="duration-short" value="15" class="hidden" /> 15s
+              </label>
+              <label class="cursor-pointer text-center py-2 rounded-lg border border-custom bg-[#131620] text-xs font-medium text-gray-300 hover:border-purple-500 has-[:checked]:border-purple-500 has-[:checked]:bg-purple-900/30 has-[:checked]:text-white">
+                <input type="radio" name="duration-short" value="30" checked class="hidden" /> 30s
+              </label>
+              <label class="cursor-pointer text-center py-2 rounded-lg border border-custom bg-[#131620] text-xs font-medium text-gray-300 hover:border-purple-500 has-[:checked]:border-purple-500 has-[:checked]:bg-purple-900/30 has-[:checked]:text-white">
+                <input type="radio" name="duration-short" value="60" class="hidden" /> 60s
+              </label>
+              <label class="cursor-pointer text-center py-2 rounded-lg border border-custom bg-[#131620] text-xs font-medium text-gray-300 hover:border-purple-500 has-[:checked]:border-purple-500 has-[:checked]:bg-purple-900/30 has-[:checked]:text-white">
+                <input type="radio" name="duration-short" value="90" class="hidden" /> 90s
+              </label>
+            </div>
+          </div>
+
+          <div id="container-duration-long" class="hidden">
+            <label class="block text-xs font-medium text-gray-300 mb-1.5">Duration Preset</label>
+            <div class="grid grid-cols-5 gap-2">
+              <label class="cursor-pointer text-center py-2 rounded-lg border border-custom bg-[#131620] text-xs font-medium text-gray-300 hover:border-blue-500 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-900/30 has-[:checked]:text-white">
+                <input type="radio" name="duration-long" value="8" checked class="hidden" /> 8m
+              </label>
+              <label class="cursor-pointer text-center py-2 rounded-lg border border-custom bg-[#131620] text-xs font-medium text-gray-300 hover:border-blue-500 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-900/30 has-[:checked]:text-white">
+                <input type="radio" name="duration-long" value="10" class="hidden" /> 10m
+              </label>
+              <label class="cursor-pointer text-center py-2 rounded-lg border border-custom bg-[#131620] text-xs font-medium text-gray-300 hover:border-blue-500 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-900/30 has-[:checked]:text-white">
+                <input type="radio" name="duration-long" value="15" class="hidden" /> 15m
+              </label>
+              <label class="cursor-pointer text-center py-2 rounded-lg border border-custom bg-[#131620] text-xs font-medium text-gray-300 hover:border-blue-500 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-900/30 has-[:checked]:text-white">
+                <input type="radio" name="duration-long" value="20" class="hidden" /> 20m
+              </label>
+              <label class="cursor-pointer text-center py-2 rounded-lg border border-custom bg-[#131620] text-xs font-medium text-gray-300 hover:border-blue-500 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-900/30 has-[:checked]:text-white">
+                <input type="radio" name="duration-long" value="30" class="hidden" /> 30m
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-gray-300 mb-1.5">Style</label>
+            <select id="modal-style" class="w-full bg-[#131620] border border-custom rounded-xl p-3 text-sm text-white focus:outline-none focus:border-purple-500">
+              <option value="cinematic">Cinematic Documentary</option>
+              <option value="realistic">Hyper-Realistic</option>
+              <option value="storytelling">Storytelling & Dramatic</option>
+              <option value="educational">Educational & Explainer</option>
+            </select>
+          </div>
+
+          <div id="modal-error" class="hidden p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs"></div>
+
+          <button type="submit" id="btn-modal-generate" class="w-full purple-gradient text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-900/30 hover:opacity-95 transition text-sm mt-2">
+            ⚡ Generate Video
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 4. VIDEO PLAYER MODAL -->
+    <div id="modal-player" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+      <div class="card-bg border border-custom max-w-2xl w-full rounded-2xl overflow-hidden shadow-2xl relative">
+        <button onclick="closePlayerModal()" class="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <div class="bg-black aspect-video flex items-center justify-center">
+          <video id="player-video" controls class="w-full h-full max-h-[60vh] object-contain"></video>
+        </div>
+
+        <div class="p-6">
+          <h3 id="player-title" class="text-lg font-bold text-white mb-2">Video Title</h3>
+          <p id="player-subtitle" class="text-xs text-gray-400 mb-4"></p>
+
+          <div class="flex space-x-3">
+            <a id="player-download-btn" href="#" download class="flex-1 text-center bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold py-2.5 rounded-xl">
+              <i class="fa-solid fa-download mr-1.5"></i> Download MP4
+            </a>
+            <button onclick="copyVideoLink()" class="px-4 bg-[#242836] hover:bg-[#2e3345] text-gray-300 text-xs font-semibold py-2.5 rounded-xl border border-custom">
+              <i class="fa-solid fa-link mr-1.5"></i> Copy Link
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let authToken = localStorage.getItem('token');
+    let currentUser = null;
+    let isRegisterMode = false;
+    let activePollInterval = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (authToken) {
+        checkSession();
+      } else {
+        showView('auth');
+      }
+    });
+
+    function showView(view) {
+      document.getElementById('view-auth').classList.toggle('hidden', view !== 'auth');
+      document.getElementById('view-dashboard').classList.toggle('hidden', view !== 'dashboard');
+    }
+
+    function toggleAuthMode() {
+      isRegisterMode = !isRegisterMode;
+      document.getElementById('field-name').classList.toggle('hidden', !isRegisterMode);
+      document.getElementById('auth-title').textContent = isRegisterMode ? 'Create Creator Account' : 'Welcome Back';
+      document.getElementById('auth-subtitle').textContent = isRegisterMode ? 'Get 50 free credits upon signup' : 'Sign in to generate stunning AI videos';
+      document.getElementById('auth-submit-btn').textContent = isRegisterMode ? 'Sign Up (50 Credits)' : 'Log In';
+      document.getElementById('auth-toggle-btn').textContent = isRegisterMode ? 'Already have an account? Log In' : "Don't have an account? Sign up & get 50 Free Credits";
+      document.getElementById('auth-error').classList.add('hidden');
+    }
+
+    async function handleAuth(e) {
+      e.preventDefault();
+      const errBox = document.getElementById('auth-error');
+      errBox.classList.add('hidden');
+
+      const email = document.getElementById('input-email').value;
+      const password = document.getElementById('input-password').value;
+      const name = document.getElementById('input-name').value;
+
+      const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+      const body = isRegisterMode ? { name, email, password } : { email, password };
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+
+        if (res.ok && data.token) {
+          authToken = data.token;
+          localStorage.setItem('token', authToken);
+          currentUser = data.user;
+          setupDashboard();
+        } else {
+          errBox.textContent = data.error?.message || 'Authentication failed.';
+          errBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        errBox.textContent = 'Server connection error.';
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    async function checkSession() {
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.user) {
+          currentUser = data.user;
+          setupDashboard();
+        } else {
+          logout();
+        }
+      } catch (e) {
+        logout();
+      }
+    }
+
+    function setupDashboard() {
+      document.getElementById('credit-badge').classList.remove('hidden');
+      document.getElementById('credit-badge').classList.add('flex');
+      document.getElementById('user-name').classList.remove('hidden');
+      document.getElementById('btn-logout').classList.remove('hidden');
+
+      document.getElementById('user-name').textContent = currentUser?.name || 'Creator';
+      document.getElementById('credit-count').textContent = currentUser?.credits || 50;
+
+      showView('dashboard');
+      loadUserVideos();
+    }
+
+    function logout() {
+      if (authToken) {
+        fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` } });
+      }
+      localStorage.removeItem('token');
+      authToken = null;
+      currentUser = null;
+      document.getElementById('credit-badge').classList.add('hidden');
+      document.getElementById('credit-badge').classList.remove('flex');
+      document.getElementById('user-name').classList.add('hidden');
+      document.getElementById('btn-logout').classList.add('hidden');
+      showView('auth');
+    }
+
+    async function loadUserVideos() {
+      const grid = document.getElementById('video-grid');
+      const empty = document.getElementById('video-empty');
+
+      try {
+        const res = await fetch('/api/videos', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await res.json();
+
+        // Refresh credit count
+        const credRes = await fetch('/api/credits', { headers: { 'Authorization': `Bearer ${authToken}` } });
+        const credData = await credRes.json();
+        if (credData.balance !== undefined) {
+          document.getElementById('credit-count').textContent = credData.balance;
+        }
+
+        if (data.videos && data.videos.length > 0) {
+          grid.innerHTML = '';
+          empty.classList.add('hidden');
+          grid.classList.remove('hidden');
+
+          data.videos.forEach(video => {
+            const card = document.createElement('div');
+            card.className = 'card-bg border border-custom rounded-2xl p-4 flex flex-col justify-between hover:border-purple-500/50 transition cursor-pointer';
+            card.onclick = () => openPlayerModal(video);
+
+            const isDone = video.status === 'completed';
+            const isGenerating = ['queued', 'planning', 'generating', 'processing'].includes(video.status);
+            const statusClass = isDone ? 'bg-emerald-900/40 text-emerald-400 border-emerald-500/30' : isGenerating ? 'bg-purple-900/40 text-purple-400 border-purple-500/30 animate-pulse' : 'bg-red-900/40 text-red-400 border-red-500/30';
+            const statusLabel = isDone ? 'Ready' : isGenerating ? 'Generating...' : 'Failed (Refunded)';
+
+            card.innerHTML = `
+              <div>
+                <div class="flex justify-between items-center mb-3">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${statusClass}">${statusLabel}</span>
+                  <span class="text-xs text-gray-500">${video.type === 'short' ? '9:16 Short' : '16:9 Long'}</span>
+                </div>
+                <h4 class="font-bold text-white text-sm line-clamp-2 mb-2">${video.title}</h4>
+              </div>
+              <div class="pt-3 border-t border-custom flex justify-between items-center text-xs text-gray-400">
+                <span>${video.durationSeconds ? Math.round(video.durationSeconds) + 's' : ''}</span>
+                <span class="text-purple-400 font-semibold flex items-center">
+                  ${isDone ? '<i class="fa-solid fa-play mr-1"></i> Watch' : '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Processing'}
+                </span>
+              </div>
+            `;
+            grid.appendChild(card);
+          });
+        } else {
+          grid.classList.add('hidden');
+          empty.classList.remove('hidden');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function openCreateModal(type) {
+      document.getElementById('modal-video-type').value = type;
+      document.getElementById('modal-create-title').textContent = type === 'short' ? 'Create AI Short (9:16)' : 'Create Long Video (16:9)';
+      document.getElementById('container-duration-short').classList.toggle('hidden', type !== 'short');
+      document.getElementById('container-duration-long').classList.toggle('hidden', type !== 'long');
+      document.getElementById('modal-error').classList.add('hidden');
+      document.getElementById('modal-create').classList.remove('hidden');
+    }
+
+    function closeCreateModal() {
+      document.getElementById('modal-create').classList.add('hidden');
+    }
+
+    async function handleCreateVideo(e) {
+      e.preventDefault();
+      const type = document.getElementById('modal-video-type').value;
+      const topic = document.getElementById('modal-topic').value;
+      const style = document.getElementById('modal-style').value;
+      const errBox = document.getElementById('modal-error');
+      errBox.classList.add('hidden');
+
+      let durationSeconds = null;
+      let durationMinutes = null;
+
+      if (type === 'short') {
+        durationSeconds = parseInt(document.querySelector('input[name="duration-short"]:checked').value, 10);
+      } else {
+        durationMinutes = parseInt(document.querySelector('input[name="duration-long"]:checked').value, 10);
+      }
+
+      try {
+        const res = await fetch('/api/videos/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ topic, videoType: type, durationSeconds, durationMinutes, style })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          closeCreateModal();
+          document.getElementById('modal-topic').value = '';
+          loadUserVideos();
+        } else {
+          errBox.textContent = data.error?.message || 'Failed to start generation.';
+          errBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        errBox.textContent = 'Server error.';
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    function openPlayerModal(video) {
+      if (video.status !== 'completed' || !video.videoUrl) return;
+      document.getElementById('player-title').textContent = video.title;
+      document.getElementById('player-subtitle').textContent = `${video.type === 'short' ? '9:16 Short' : '16:9 Long'} • ${Math.round(video.durationSeconds)} seconds`;
+
+      const videoEl = document.getElementById('player-video');
+      videoEl.src = video.videoUrl;
+      document.getElementById('player-download-btn').href = video.videoUrl;
+
+      document.getElementById('modal-player').classList.remove('hidden');
+      videoEl.play();
+    }
+
+    function closePlayerModal() {
+      const videoEl = document.getElementById('player-video');
+      videoEl.pause();
+      videoEl.src = '';
+      document.getElementById('modal-player').classList.add('hidden');
+    }
+
+    function copyVideoLink() {
+      const url = document.getElementById('player-download-btn').href;
+      navigator.clipboard.writeText(url);
+      alert('Video link copied to clipboard!');
+    }
+  </script>
+</body>
+</html>
