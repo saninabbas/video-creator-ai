@@ -1,297 +1,505 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>AI Video Studio — Cinematic AI Studio</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bg: '#08090D',
+            surface: '#101218',
+            'surface-elevated': '#151821',
+            border: 'rgba(255, 255, 255, 0.08)',
+            primary: '#7C4DFF',
+            'primary-hover': '#8B63FF',
+            text: '#F5F5F7',
+            secondary: '#9A9CA6',
+            success: '#4ADE80',
+            warning: '#FBBF24',
+            error: '#F87171',
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    body { background-color: #0B0C0F; color: #F5F7FA; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    .surface { background-color: #121419; }
-    .surface-elevated { background-color: #181B21; }
-    .border-custom { border-color: #242832; }
-    .text-secondary { color: #9299A6; }
-    .text-muted { color: #626977; }
-    .brand-gradient { background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%); }
-    .card-glow { border-color: #8B5CF6; box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); }
-    .indicator-ready { color: #22C55E; }
-    .indicator-generating { color: #8B5CF6; animation: pulse 1.5s infinite; }
+    * { box-sizing: border-box; }
+    body {
+      background-color: #08090D;
+      color: #F5F5F7;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    .custom-border { border-color: rgba(255, 255, 255, 0.08); }
+    .custom-border-hover:hover { border-color: rgba(124, 77, 255, 0.4); }
+    .glass-nav {
+      background: rgba(16, 18, 24, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* Smooth transitions */
+    .transition-base { transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+    
+    /* Active Nav States */
+    .nav-item-active {
+      background-color: rgba(124, 77, 255, 0.12);
+      color: #F5F5F7;
+      border-color: rgba(124, 77, 255, 0.3);
+    }
   </style>
 </head>
-<body class="min-h-screen flex flex-col antialiased">
+<body class="min-h-screen flex bg-[#08090D] text-[#F5F5F7] antialiased selection:bg-[#7C4DFF]/30">
 
-  <!-- TOP NAV -->
-  <header class="border-b border-custom bg-[#121419]/90 backdrop-blur-md sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-5 py-3.5 flex justify-between items-center">
-      <div class="flex items-center space-x-3">
-        <div class="w-8 h-8 rounded-xl brand-gradient flex items-center justify-center shadow-lg shadow-purple-900/30">
-          <span class="text-white font-bold text-sm">✦</span>
-        </div>
-        <span class="font-semibold text-lg tracking-tight text-white">AI Video Studio</span>
+  <!-- ========================================== -->
+  <!-- 1. AUTHENTICATION CONTAINER (Login / Signup) -->
+  <!-- ========================================== -->
+  <div id="view-auth" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#08090D]">
+    <div class="w-full max-w-md bg-[#101218] border custom-border rounded-2xl p-8 shadow-2xl relative">
+      
+      <!-- LOGO -->
+      <div class="flex flex-col items-center mb-6 text-center">
+        <img src="/assets/logo.png" alt="AI Video Studio" class="h-12 w-auto object-contain mb-3 rounded-lg" onerror="this.src='/assets/logo.png'" />
+        <h2 id="auth-heading" class="text-xl font-bold text-white tracking-tight">Welcome back</h2>
+        <p id="auth-subheading" class="text-xs text-secondary mt-1">Sign in to craft cinematic AI videos in minutes</p>
       </div>
 
-      <div id="nav-auth-section" class="flex items-center space-x-4">
-        <div id="credit-badge" onclick="openCreditModal()" class="hidden items-center bg-[#181B21] px-3.5 py-1.5 rounded-full border border-custom text-xs font-semibold text-white cursor-pointer hover:border-purple-500 transition">
-          <span class="w-2 h-2 rounded-full bg-violet-400 mr-2 inline-block"></span>
-          <span id="credit-count">250</span> Credits <span class="text-violet-400 ml-1.5 font-bold">+</span>
-        </div>
-        <span id="user-name" class="hidden text-xs text-gray-400 font-medium"></span>
-        <button id="btn-logout" onclick="logout()" class="hidden text-xs text-red-400 hover:text-red-300 font-medium px-3 py-1.5 rounded-lg border border-red-500/20 hover:bg-red-500/10 transition">
-          Sign Out
-        </button>
-      </div>
-    </div>
-  </header>
+      <!-- ERROR ALERT -->
+      <div id="auth-error" class="hidden mb-4 p-3 rounded-xl bg-error/10 border border-error/20 text-error text-xs font-medium"></div>
 
-  <!-- MAIN CONTAINER -->
-  <main class="flex-1 max-w-6xl w-full mx-auto px-5 py-8">
-
-    <!-- 1. AUTH SCREEN -->
-    <div id="view-auth" class="max-w-md mx-auto my-12 surface p-8 rounded-2xl border border-custom shadow-2xl">
-      <div class="text-center mb-8">
-        <div class="w-12 h-12 rounded-2xl brand-gradient flex items-center justify-center mx-auto mb-4 shadow-xl shadow-purple-900/40">
-          <span class="text-white text-xl">✦</span>
-        </div>
-        <h2 id="auth-title" class="text-2xl font-bold text-white mb-2">Turn an idea into a video.</h2>
-        <p id="auth-subtitle" class="text-xs text-secondary">Sign in to craft cinematic AI videos in minutes</p>
-      </div>
-
-      <div id="auth-error" class="hidden mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs"></div>
-
+      <!-- AUTH FORM -->
       <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
         <div id="field-name" class="hidden">
           <label class="block text-xs font-medium text-secondary mb-1.5">Creator Name</label>
-          <input id="input-name" type="text" placeholder="Sanin" class="w-full bg-[#0B0C0F] border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500" />
+          <input id="input-name" type="text" placeholder="Sanin" class="w-full bg-[#08090D] border custom-border rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary transition-base" />
         </div>
 
         <div>
           <label class="block text-xs font-medium text-secondary mb-1.5">Email Address</label>
-          <input id="input-email" type="email" required placeholder="creator@example.com" class="w-full bg-[#0B0C0F] border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500" />
+          <input id="input-email" type="email" required placeholder="creator@example.com" class="w-full bg-[#08090D] border custom-border rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary transition-base" />
         </div>
 
         <div>
           <div class="flex justify-between items-center mb-1.5">
             <label class="block text-xs font-medium text-secondary">Password</label>
-            <button type="button" onclick="openForgotPasswordModal()" id="link-forgot-pwd" class="text-xs text-violet-400 hover:text-violet-300">Forgot password?</button>
+            <button type="button" onclick="openForgotPasswordModal()" id="link-forgot-pwd" class="text-xs text-primary hover:text-primary-hover transition-base">Forgot password?</button>
           </div>
-          <input id="input-password" type="password" required placeholder="••••••••" class="w-full bg-[#0B0C0F] border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500" />
+          <input id="input-password" type="password" required placeholder="••••••••" class="w-full bg-[#08090D] border custom-border rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary transition-base" />
         </div>
 
-        <button type="submit" id="auth-submit-btn" class="w-full brand-gradient text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-900/30 hover:opacity-95 transition text-sm mt-2">
-          Enter Studio
+        <button type="submit" id="auth-submit-btn" class="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3 rounded-xl transition-base text-sm shadow-lg shadow-purple-950/40 mt-2">
+          Log In
         </button>
       </form>
 
-      <div class="text-center mt-6">
-        <button id="auth-toggle-btn" onclick="toggleAuthMode()" class="text-xs text-violet-400 hover:text-violet-300 font-medium">
-          New creator? Create an account (50 Signup Credits)
+      <!-- TOGGLE LOGIN / SIGNUP -->
+      <div class="text-center mt-6 pt-4 border-t custom-border">
+        <button id="auth-toggle-btn" onclick="toggleAuthMode()" class="text-xs text-secondary hover:text-white transition-base font-medium">
+          Don't have an account? <span class="text-primary font-semibold">Create account (50 Credits)</span>
         </button>
       </div>
     </div>
+  </div>
 
-    <!-- FORGOT PASSWORD MODAL -->
-    <div id="modal-forgot-pwd" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-      <div class="surface border border-custom max-w-md w-full rounded-2xl p-6 shadow-2xl space-y-4 relative">
-        <button onclick="closeForgotPasswordModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
+  <!-- FORGOT PASSWORD MODAL -->
+  <div id="modal-forgot-pwd" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#101218] border custom-border max-w-md w-full rounded-2xl p-6 shadow-2xl space-y-4 relative">
+      <button onclick="closeForgotPasswordModal()" class="absolute top-4 right-4 text-secondary hover:text-white transition-base">
+        <i class="fa-solid fa-xmark text-base"></i>
+      </button>
+      <div class="space-y-1">
         <h3 class="text-lg font-bold text-white">Forgot your password?</h3>
         <p class="text-xs text-secondary">Enter your email and we'll send you a secure password reset link.</p>
-
-        <div id="forgot-alert" class="hidden p-3 rounded-xl text-xs"></div>
-
-        <form id="forgot-form" onsubmit="handleForgotPassword(event)" class="space-y-4">
-          <div>
-            <label class="block text-xs font-medium text-secondary mb-1.5">Email Address</label>
-            <input id="forgot-email" type="email" required placeholder="creator@example.com" class="w-full bg-[#0B0C0F] border border-custom rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500" />
-          </div>
-          <button type="submit" id="btn-forgot-submit" class="w-full brand-gradient text-white font-bold py-3 rounded-xl text-xs hover:opacity-95 transition">
-            Send Reset Link
-          </button>
-        </form>
-
-        <div class="text-center pt-2">
-          <button onclick="closeForgotPasswordModal()" class="text-xs text-secondary hover:text-white">
-            Remember your password? Log in
-          </button>
-        </div>
       </div>
+
+      <div id="forgot-error" class="hidden p-3 rounded-xl bg-error/10 border border-error/20 text-error text-xs"></div>
+      <div id="forgot-success" class="hidden p-3 rounded-xl bg-success/10 border border-success/20 text-success text-xs"></div>
+
+      <form id="forgot-form" onsubmit="handleForgotPassword(event)" class="space-y-3 pt-1">
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1">Email Address</label>
+          <input id="forgot-email" type="email" required placeholder="creator@example.com" class="w-full bg-[#08090D] border custom-border rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary transition-base" />
+        </div>
+        <button type="submit" id="forgot-submit-btn" class="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-2.5 rounded-xl transition-base text-xs">
+          Send Reset Link
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. DESKTOP SIDEBAR (~240px) -->
+  <!-- ========================================== -->
+  <aside id="app-sidebar" class="hidden md:flex flex-col w-60 h-screen sticky top-0 bg-[#101218] border-r custom-border p-4 z-40 shrink-0">
+    
+    <!-- BRAND LOGO -->
+    <div class="flex items-center space-x-2.5 px-2 py-3 mb-4 cursor-pointer" onclick="navigateTo('dashboard')">
+      <img src="/assets/logo.png" alt="AI Video Studio" class="h-8 w-auto object-contain rounded" onerror="this.src='/assets/logo.png'" />
     </div>
 
-    <!-- 2. CREATOR DASHBOARD -->
-    <div id="view-dashboard" class="hidden space-y-10">
+    <!-- PRIMARY NAVIGATION -->
+    <nav class="space-y-1 flex-1">
+      <button onclick="navigateTo('dashboard')" id="nav-dashboard" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium text-white transition-base nav-item-active border border-transparent">
+        <i class="fa-solid fa-house w-4 text-center text-primary"></i>
+        <span>Home</span>
+      </button>
 
-      <!-- HERO HEADLINE -->
-      <div>
-        <span id="greeting-text" class="text-xs font-medium text-secondary block mb-1">Good morning, Sanin</span>
-        <h1 class="text-3xl font-bold text-white tracking-tight mb-1">Turn an idea into a video.</h1>
-        <p class="text-sm text-secondary">Create cinematic AI videos in minutes.</p>
+      <button onclick="navigateTo('create-short')" id="nav-create" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium text-secondary hover:text-white hover:bg-[#151821] transition-base border border-transparent">
+        <i class="fa-solid fa-wand-magic-sparkles w-4 text-center"></i>
+        <span>Create Short</span>
+      </button>
+
+      <button onclick="navigateTo('create-long')" id="nav-create-long" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium text-secondary hover:text-white hover:bg-[#151821] transition-base border border-transparent">
+        <i class="fa-solid fa-film w-4 text-center"></i>
+        <span>Create Long</span>
+      </button>
+
+      <button onclick="navigateTo('my-videos')" id="nav-my-videos" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium text-secondary hover:text-white hover:bg-[#151821] transition-base border border-transparent">
+        <i class="fa-solid fa-play w-4 text-center"></i>
+        <span>My Videos</span>
+      </button>
+
+      <button onclick="navigateTo('projects')" id="nav-projects" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium text-secondary hover:text-white hover:bg-[#151821] transition-base border border-transparent">
+        <i class="fa-solid fa-folder-open w-4 text-center"></i>
+        <span>Projects</span>
+      </button>
+
+      <button onclick="navigateTo('templates')" id="nav-templates" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium text-secondary hover:text-white hover:bg-[#151821] transition-base border border-transparent">
+        <i class="fa-solid fa-shapes w-4 text-center"></i>
+        <span>Templates</span>
+      </button>
+
+      <div class="pt-4 pb-2 px-3">
+        <span class="text-[10px] font-bold text-secondary/60 uppercase tracking-wider">Account</span>
       </div>
 
-      <!-- HERO CREATION CARDS -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- CREATE SHORT -->
-        <div onclick="openCreateModal('short')" class="surface border border-violet-500/50 p-6 rounded-2xl cursor-pointer hover:border-violet-500 transition hover:shadow-xl hover:shadow-purple-900/20 group relative overflow-hidden">
-          <span class="text-violet-400 text-xl block mb-3 font-bold">✦</span>
-          <h3 class="text-xl font-bold text-white mb-1 group-hover:text-violet-300 transition">Create Short</h3>
-          <p class="text-xs font-semibold text-violet-400 mb-1">Vertical · 9:16</p>
-          <p class="text-xs text-muted mb-4">15–60 seconds</p>
-          <div class="flex items-center text-xs font-semibold text-violet-400">
-            <span>Open Workspace (10–35 cr)</span>
-            <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition"></i>
-          </div>
-        </div>
+      <button onclick="navigateTo('credits')" id="nav-credits" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium text-secondary hover:text-white hover:bg-[#151821] transition-base border border-transparent">
+        <i class="fa-solid fa-coins w-4 text-center"></i>
+        <span>Credits & Wallet</span>
+      </button>
 
-        <!-- CREATE LONG -->
-        <div onclick="openCreateModal('long')" class="surface border border-custom p-6 rounded-2xl cursor-pointer hover:border-indigo-500 transition hover:shadow-xl hover:shadow-indigo-900/20 group relative overflow-hidden">
-          <span class="text-indigo-400 text-xl block mb-3 font-bold">▣</span>
-          <h3 class="text-xl font-bold text-white mb-1 group-hover:text-indigo-300 transition">Create Long</h3>
-          <p class="text-xs font-semibold text-indigo-400 mb-1">Landscape · 16:9</p>
-          <p class="text-xs text-muted mb-4">8–30 minutes</p>
-          <div class="flex items-center text-xs font-semibold text-indigo-400">
-            <span>Open Workspace (50–90 cr)</span>
-            <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition"></i>
-          </div>
+      <button onclick="navigateTo('settings')" id="nav-settings" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium text-secondary hover:text-white hover:bg-[#151821] transition-base border border-transparent">
+        <i class="fa-solid fa-gear w-4 text-center"></i>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <!-- UPGRADE TO PRO CARD -->
+    <div class="bg-[#151821] border custom-border rounded-xl p-3.5 space-y-2 mt-auto">
+      <div class="flex items-center space-x-2">
+        <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+        <span class="text-xs font-semibold text-white">Studio Pro</span>
+      </div>
+      <p class="text-[11px] text-secondary leading-snug">Generate unlimited 4K videos & access Gemini Pro Director.</p>
+      <button onclick="openCreditModal()" class="w-full bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary hover:text-white text-[11px] font-semibold py-1.5 rounded-lg transition-base">
+        Buy Credits +
+      </button>
+    </div>
+  </aside>
+
+  <!-- ========================================== -->
+  <!-- 3. MAIN CONTENT WRAPPER -->
+  <!-- ========================================== -->
+  <div class="flex-1 flex flex-col min-w-0 min-h-screen">
+
+    <!-- TOP CONTROL BAR -->
+    <header class="glass-nav border-b custom-border sticky top-0 z-30 px-5 py-3 flex items-center justify-between">
+      
+      <!-- MOBILE LOGO / SEARCH -->
+      <div class="flex items-center space-x-3">
+        <div class="md:hidden flex items-center space-x-2 cursor-pointer" onclick="navigateTo('dashboard')">
+          <img src="/assets/logo.png" alt="Logo" class="h-6 w-auto" />
+        </div>
+        <div class="hidden sm:flex items-center bg-[#151821] border custom-border rounded-xl px-3 py-1.5 text-xs text-secondary w-64 focus-within:border-primary/50 transition-base">
+          <i class="fa-solid fa-magnifying-glass mr-2 text-[11px]"></i>
+          <input type="text" id="global-search" placeholder="Search videos or topics..." oninput="handleSearch(this.value)" class="bg-transparent text-white focus:outline-none w-full text-xs" />
         </div>
       </div>
 
-      <!-- LIVE GENERATION BANNER -->
-      <div id="live-generation-banner" class="hidden surface-elevated border border-violet-500/50 rounded-2xl p-5 shadow-xl shadow-purple-950/30">
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center space-x-2.5">
-            <span class="relative flex h-3 w-3">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-3 w-3 bg-violet-500"></span>
-            </span>
-            <span class="text-xs font-bold uppercase tracking-wider text-violet-400">AI Studio Generating Video...</span>
-          </div>
-          <span id="live-gen-percent" class="text-xs font-bold text-white bg-violet-600/30 border border-violet-500/40 px-2.5 py-0.5 rounded-full">45%</span>
-        </div>
-        <h3 id="live-gen-title" class="text-sm font-bold text-white truncate mb-1">Topic Name</h3>
-        <p id="live-gen-step" class="text-xs text-secondary mb-3 flex items-center">
-          <i class="fa-solid fa-spinner fa-spin mr-2 text-violet-400"></i> Directing scenes with visual engine...
-        </p>
-        <div class="w-full bg-[#121419] h-2 rounded-full overflow-hidden border border-custom">
-          <div id="live-gen-bar" class="bg-gradient-to-r from-violet-600 to-indigo-500 h-full rounded-full transition-all duration-500" style="width: 45%"></div>
-        </div>
-      </div>
+      <!-- RIGHT CONTROLS -->
+      <div class="flex items-center space-x-3">
+        <!-- CREDIT BADGE -->
+        <button onclick="navigateTo('credits')" class="flex items-center space-x-2 bg-[#151821] hover:bg-[#1a1e29] border custom-border hover:border-primary/40 px-3 py-1.5 rounded-xl transition-base text-xs font-medium text-white">
+          <span class="w-2 h-2 rounded-full bg-primary"></span>
+          <span id="header-credit-count">1,000</span>
+          <span class="text-secondary text-[11px]">Credits</span>
+          <span class="text-primary font-bold text-xs">+</span>
+        </button>
 
-      <!-- RECENT VIDEOS / LIBRARY -->
-      <div>
-        <div class="flex justify-between items-center mb-6">
-          <span class="text-xs font-semibold text-muted uppercase tracking-wider">RECENT VIDEOS</span>
-          <button onclick="loadUserVideos()" class="text-xs text-violet-400 hover:text-violet-300 font-medium flex items-center">
-            <i class="fa-solid fa-rotate-right mr-1.5"></i> Refresh
+        <!-- USER PROFILE -->
+        <div class="flex items-center space-x-2 pl-1 border-l custom-border">
+          <div class="w-7 h-7 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-primary font-bold text-xs" id="user-avatar">
+            S
+          </div>
+          <span class="hidden md:inline-block text-xs font-medium text-white max-w-[100px] truncate" id="user-name-header">Sanin</span>
+          <button onclick="logout()" title="Sign out" class="text-secondary hover:text-error text-xs p-1 transition-base">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
           </button>
         </div>
+      </div>
+    </header>
 
-        <div id="video-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+    <!-- ========================================== -->
+    <!-- 4. APP VIEWS -->
+    <!-- ========================================== -->
+    <main class="flex-1 p-5 md:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-10">
+
+      <!-- ---------------------------------------- -->
+      <!-- VIEW A: DASHBOARD -->
+      <!-- ---------------------------------------- -->
+      <div id="section-dashboard" class="space-y-8">
+        
+        <!-- HERO -->
+        <div class="space-y-1">
+          <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight">Turn an idea into a video.</h1>
+          <p class="text-xs md:text-sm text-secondary">Create cinematic AI videos in minutes with Gemini & Veo.</p>
+        </div>
+
+        <!-- HERO CREATION CARDS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- CREATE SHORT -->
+          <div onclick="navigateTo('create-short')" class="bg-[#101218] border custom-border custom-border-hover p-6 rounded-2xl cursor-pointer transition-base group relative overflow-hidden">
+            <div class="flex justify-between items-start mb-4">
+              <div class="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-105 transition-base">
+                <i class="fa-solid fa-mobile-screen text-base"></i>
+              </div>
+              <span class="text-[11px] font-semibold text-secondary bg-[#151821] border custom-border px-2.5 py-1 rounded-full">10–35 cr</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-1 group-hover:text-primary transition-base">Create Short</h3>
+            <p class="text-xs font-medium text-primary mb-1">15–60 sec · 9:16 Vertical</p>
+            <p class="text-xs text-secondary mb-4">Perfect for TikTok, Instagram Reels & YouTube Shorts</p>
+            <div class="flex items-center text-xs font-semibold text-primary">
+              <span>Create Short →</span>
+            </div>
+          </div>
+
+          <!-- CREATE LONG -->
+          <div onclick="navigateTo('create-long')" class="bg-[#101218] border custom-border custom-border-hover p-6 rounded-2xl cursor-pointer transition-base group relative overflow-hidden">
+            <div class="flex justify-between items-start mb-4">
+              <div class="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-105 transition-base">
+                <i class="fa-solid fa-tv text-base"></i>
+              </div>
+              <span class="text-[11px] font-semibold text-secondary bg-[#151821] border custom-border px-2.5 py-1 rounded-full">50–90 cr</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-1 group-hover:text-primary transition-base">Create Long</h3>
+            <p class="text-xs font-medium text-primary mb-1">8–30 min · 16:9 Landscape</p>
+            <p class="text-xs text-secondary mb-4">For YouTube, documentaries, stories & explainers</p>
+            <div class="flex items-center text-xs font-semibold text-primary">
+              <span>Create Long →</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIVE GENERATION PROGRESS BANNER -->
+        <div id="dashboard-gen-banner" class="hidden bg-[#101218] border border-primary/40 rounded-2xl p-5 shadow-xl shadow-purple-950/20 transition-base">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center space-x-2">
+              <span class="relative flex h-2.5 w-2.5">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+              </span>
+              <span class="text-xs font-bold text-primary uppercase tracking-wider">Generating Video...</span>
+            </div>
+            <span id="dash-gen-percent" class="text-xs font-bold text-white bg-primary/20 border border-primary/40 px-2.5 py-0.5 rounded-full">45%</span>
+          </div>
+          <h4 id="dash-gen-title" class="text-sm font-bold text-white truncate mb-1">Video Title</h4>
+          <p id="dash-gen-step" class="text-xs text-secondary mb-3 flex items-center">
+            <i class="fa-solid fa-spinner fa-spin mr-2 text-primary"></i> Directing scenes with AI visual engine...
+          </p>
+          <div class="w-full bg-[#08090D] h-1.5 rounded-full overflow-hidden border custom-border">
+            <div id="dash-gen-bar" class="bg-primary h-full rounded-full transition-all duration-500" style="width: 45%"></div>
+          </div>
+        </div>
+
+        <!-- RECENT VIDEOS -->
+        <div class="space-y-4">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-secondary uppercase tracking-wider">Recent Videos</span>
+            <button onclick="navigateTo('my-videos')" class="text-xs text-primary hover:text-primary-hover font-medium flex items-center">
+              View all →
+            </button>
+          </div>
+
+          <div id="recent-video-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <!-- Populated via JS -->
+          </div>
+
+          <div id="recent-video-empty" class="hidden bg-[#101218] border custom-border rounded-2xl p-12 text-center">
+            <i class="fa-solid fa-film text-3xl text-secondary/40 mb-3 block"></i>
+            <h4 class="text-sm font-semibold text-white mb-1">No videos generated yet</h4>
+            <p class="text-xs text-secondary">Choose Create Short or Create Long above to produce your first video.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------------------------------------- -->
+      <!-- VIEW B: CREATE SHORT (9:16) -->
+      <!-- ---------------------------------------- -->
+      <div id="section-create-short" class="hidden max-w-2xl mx-auto space-y-6">
+        <div class="flex items-center justify-between pb-4 border-b custom-border">
+          <button onclick="navigateTo('dashboard')" class="text-xs font-semibold text-secondary hover:text-white flex items-center transition-base">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Back
+          </button>
+          <span class="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-3 py-1 rounded-full">Create Short (9:16)</span>
+        </div>
+
+        <form onsubmit="handleCreateVideoSubmit(event, 'short')" class="space-y-6">
+          <div>
+            <label class="block text-xs font-semibold text-white mb-2">What do you want to create?</label>
+            <textarea id="prompt-short" required rows="4" placeholder="e.g. 5 surprising health habits that boost daily energy and focus in the morning..." class="w-full bg-[#101218] border custom-border rounded-xl p-4 text-sm text-white placeholder:text-secondary/50 focus:outline-none focus:border-primary transition-base resize-none"></textarea>
+          </div>
+
+          <!-- DURATION SELECTION -->
+          <div>
+            <label class="block text-xs font-semibold text-white mb-2">Duration</label>
+            <div class="grid grid-cols-3 gap-3">
+              <button type="button" onclick="selectDuration('short', 15)" id="btn-short-15" class="duration-btn bg-[#101218] border border-primary text-white p-3 rounded-xl text-center transition-base">
+                <span class="block text-sm font-bold">15 sec</span>
+                <span class="text-[11px] text-secondary">10 credits</span>
+              </button>
+              <button type="button" onclick="selectDuration('short', 30)" id="btn-short-30" class="duration-btn bg-[#101218] border custom-border text-secondary hover:text-white p-3 rounded-xl text-center transition-base">
+                <span class="block text-sm font-bold">30 sec</span>
+                <span class="text-[11px] text-secondary">20 credits</span>
+              </button>
+              <button type="button" onclick="selectDuration('short', 60)" id="btn-short-60" class="duration-btn bg-[#101218] border custom-border text-secondary hover:text-white p-3 rounded-xl text-center transition-base">
+                <span class="block text-sm font-bold">60 sec</span>
+                <span class="text-[11px] text-secondary">35 credits</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- STYLE SELECTION -->
+          <div>
+            <label class="block text-xs font-semibold text-white mb-2">Visual Style</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" onclick="selectStyle('cinematic')" id="style-cinematic" class="style-btn bg-[#101218] border border-primary text-white py-2.5 px-3 rounded-xl text-xs font-semibold transition-base">Cinematic</button>
+              <button type="button" onclick="selectStyle('documentary')" id="style-documentary" class="style-btn bg-[#101218] border custom-border text-secondary hover:text-white py-2.5 px-3 rounded-xl text-xs font-semibold transition-base">Documentary</button>
+              <button type="button" onclick="selectStyle('realistic')" id="style-realistic" class="style-btn bg-[#101218] border custom-border text-secondary hover:text-white py-2.5 px-3 rounded-xl text-xs font-semibold transition-base">Realistic</button>
+            </div>
+          </div>
+
+          <!-- STICKY BOTTOM ACTION -->
+          <div class="bg-[#101218] border custom-border rounded-2xl p-4 flex items-center justify-between">
+            <div>
+              <span id="short-summary-cost" class="text-sm font-bold text-white block">10 Credits</span>
+              <span id="short-summary-after" class="text-[11px] text-secondary">After generation: 990 credits</span>
+            </div>
+            <button type="submit" id="btn-submit-short" class="bg-primary hover:bg-primary-hover text-white font-semibold px-6 py-3 rounded-xl transition-base text-xs shadow-lg shadow-purple-950/40">
+              Generate Short →
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ---------------------------------------- -->
+      <!-- VIEW C: CREATE LONG (16:9) -->
+      <!-- ---------------------------------------- -->
+      <div id="section-create-long" class="hidden max-w-2xl mx-auto space-y-6">
+        <div class="flex items-center justify-between pb-4 border-b custom-border">
+          <button onclick="navigateTo('dashboard')" class="text-xs font-semibold text-secondary hover:text-white flex items-center transition-base">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Back
+          </button>
+          <span class="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-3 py-1 rounded-full">Create Long (16:9)</span>
+        </div>
+
+        <form onsubmit="handleCreateVideoSubmit(event, 'long')" class="space-y-6">
+          <div>
+            <label class="block text-xs font-semibold text-white mb-2">What is your story or documentary about?</label>
+            <textarea id="prompt-long" required rows="4" placeholder="e.g. The Untold History of Artificial Intelligence: From Turing to Autonomous Agents..." class="w-full bg-[#101218] border custom-border rounded-xl p-4 text-sm text-white placeholder:text-secondary/50 focus:outline-none focus:border-primary transition-base resize-none"></textarea>
+          </div>
+
+          <!-- DURATION SELECTION -->
+          <div>
+            <label class="block text-xs font-semibold text-white mb-2">Duration</label>
+            <div class="grid grid-cols-5 gap-2">
+              <button type="button" onclick="selectDuration('long', 8)" id="btn-long-8" class="duration-btn bg-[#101218] border border-primary text-white p-2.5 rounded-xl text-center transition-base">
+                <span class="block text-xs font-bold">8 min</span>
+                <span class="text-[10px] text-secondary">50 cr</span>
+              </button>
+              <button type="button" onclick="selectDuration('long', 10)" id="btn-long-10" class="duration-btn bg-[#101218] border custom-border text-secondary hover:text-white p-2.5 rounded-xl text-center transition-base">
+                <span class="block text-xs font-bold">10 min</span>
+                <span class="text-[10px] text-secondary">55 cr</span>
+              </button>
+              <button type="button" onclick="selectDuration('long', 15)" id="btn-long-15" class="duration-btn bg-[#101218] border custom-border text-secondary hover:text-white p-2.5 rounded-xl text-center transition-base">
+                <span class="block text-xs font-bold">15 min</span>
+                <span class="text-[10px] text-secondary">65 cr</span>
+              </button>
+              <button type="button" onclick="selectDuration('long', 20)" id="btn-long-20" class="duration-btn bg-[#101218] border custom-border text-secondary hover:text-white p-2.5 rounded-xl text-center transition-base">
+                <span class="block text-xs font-bold">20 min</span>
+                <span class="text-[10px] text-secondary">75 cr</span>
+              </button>
+              <button type="button" onclick="selectDuration('long', 30)" id="btn-long-30" class="duration-btn bg-[#101218] border custom-border text-secondary hover:text-white p-2.5 rounded-xl text-center transition-base">
+                <span class="block text-xs font-bold">30 min</span>
+                <span class="text-[10px] text-secondary">90 cr</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- STICKY BOTTOM ACTION -->
+          <div class="bg-[#101218] border custom-border rounded-2xl p-4 flex items-center justify-between">
+            <div>
+              <span id="long-summary-cost" class="text-sm font-bold text-white block">50 Credits</span>
+              <span id="long-summary-after" class="text-[11px] text-secondary">After generation: 950 credits</span>
+            </div>
+            <button type="submit" id="btn-submit-long" class="bg-primary hover:bg-primary-hover text-white font-semibold px-6 py-3 rounded-xl transition-base text-xs shadow-lg shadow-purple-950/40">
+              Generate Long Video →
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ---------------------------------------- -->
+      <!-- VIEW D: MY VIDEOS LIBRARY -->
+      <!-- ---------------------------------------- -->
+      <div id="section-my-videos" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b custom-border">
+          <div>
+            <h2 class="text-xl font-bold text-white">My Videos</h2>
+            <p class="text-xs text-secondary">Manage and download your generated videos</p>
+          </div>
+
+          <!-- FILTER BUTTONS -->
+          <div class="flex items-center space-x-2 overflow-x-auto pb-1 max-w-full">
+            <button onclick="filterVideos('all')" id="filter-all" class="filter-btn bg-[#151821] border border-primary text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-base">All</button>
+            <button onclick="filterVideos('short')" id="filter-short" class="filter-btn bg-[#151821] border custom-border text-secondary hover:text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-base">Shorts</button>
+            <button onclick="filterVideos('long')" id="filter-long" class="filter-btn bg-[#151821] border custom-border text-secondary hover:text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-base">Long Form</button>
+            <button onclick="filterVideos('completed')" id="filter-completed" class="filter-btn bg-[#151821] border custom-border text-secondary hover:text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-base">Ready</button>
+          </div>
+        </div>
+
+        <div id="my-videos-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <!-- Populated by JS -->
         </div>
-
-        <div id="video-empty" class="hidden surface border border-custom rounded-2xl p-12 text-center">
-          <span class="text-3xl block mb-3">🎬</span>
-          <h4 class="text-sm font-semibold text-white mb-1">No videos yet</h4>
-          <p class="text-muted text-xs">Choose a creation card above to craft your first AI video</p>
-        </div>
       </div>
 
-    </div>
-
-    <!-- 3. CREATION WORKSPACE MODAL -->
-    <div id="modal-create" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-      <div class="surface border border-custom max-w-lg w-full rounded-2xl p-6 shadow-2xl relative">
-        <button onclick="closeCreateModal()" class="absolute top-5 right-5 text-gray-400 hover:text-white text-lg">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-
-        <h3 id="modal-title" class="text-lg font-bold text-white mb-1">Create Short</h3>
-        <p id="modal-subtitle" class="text-xs text-secondary mb-5">Tell us what you want to create.</p>
-
-        <form id="create-video-form" onsubmit="handleCreateVideo(event)" class="space-y-5">
-          <!-- Topic Input -->
-          <div>
-            <label class="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">TOPIC / IDEA</label>
-            <textarea id="create-topic" required rows="4" placeholder="5 surprising facts about the deep ocean..." class="w-full bg-[#0B0C0F] border border-custom rounded-xl p-3.5 text-sm text-white focus:outline-none focus:border-violet-500 placeholder-gray-600 resize-none"></textarea>
-          </div>
-
-          <!-- Duration Selector -->
-          <div>
-            <label class="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">DURATION</label>
-            <div id="duration-buttons" class="grid grid-cols-3 gap-2.5">
-              <!-- Dynamically populated based on Short vs Long -->
-            </div>
-          </div>
-
-          <!-- Style Selector -->
-          <div>
-            <label class="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">STYLE</label>
-            <div class="grid grid-cols-3 gap-2.5">
-              <button type="button" onclick="selectStyle('cinematic')" id="style-cinematic" class="style-btn surface-elevated border border-violet-500 py-2.5 rounded-xl text-xs font-semibold text-white">🎬 Cinematic</button>
-              <button type="button" onclick="selectStyle('documentary')" id="style-documentary" class="style-btn surface-elevated border border-custom py-2.5 rounded-xl text-xs text-secondary hover:text-white">◉ Documentary</button>
-              <button type="button" onclick="selectStyle('social')" id="style-social" class="style-btn surface-elevated border border-custom py-2.5 rounded-xl text-xs text-secondary hover:text-white">✦ Social</button>
-            </div>
-          </div>
-
-          <!-- Sticky Generation Cost Bar -->
-          <div class="pt-4 border-t border-custom space-y-2">
-            <div class="flex justify-between text-xs">
-              <span id="summary-duration" class="font-semibold text-white">15 sec</span>
-              <span id="summary-credits" class="font-bold text-violet-400">10 credits</span>
-            </div>
-            <div class="flex justify-between text-xs text-secondary">
-              <span>After generation</span>
-              <span id="summary-after">240 credits</span>
-            </div>
-            <button type="submit" id="btn-generate-submit" class="w-full brand-gradient text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-900/30 hover:opacity-95 transition text-sm mt-3">
-              GENERATE VIDEO  →
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- 4. VIDEO PLAYER MODAL -->
-    <div id="modal-player" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-      <div class="bg-[#0B0C0F] border border-custom max-w-2xl w-full rounded-2xl overflow-hidden shadow-2xl relative">
-        <button onclick="closePlayerModal()" class="absolute top-4 right-4 z-10 text-white/70 hover:text-white bg-black/50 p-2 rounded-full">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-
-        <div class="bg-black aspect-video flex items-center justify-center relative">
-          <video id="player-video" controls class="w-full h-full object-contain"></video>
+      <!-- ---------------------------------------- -->
+      <!-- VIEW E: CREDITS & WALLET -->
+      <!-- ---------------------------------------- -->
+      <div id="section-credits" class="hidden max-w-2xl mx-auto space-y-6">
+        <div class="bg-[#101218] border custom-border rounded-2xl p-6 text-center space-y-2">
+          <span class="text-xs font-semibold text-secondary uppercase tracking-wider">Credit Wallet Balance</span>
+          <div class="text-4xl font-extrabold text-white tracking-tight" id="wallet-balance-display">1,000</div>
+          <p class="text-xs text-secondary">Credits remaining for AI video generation</p>
         </div>
 
-        <div class="p-6 surface space-y-4">
-          <div>
-            <h3 id="player-title" class="text-lg font-bold text-white mb-1">Deep Ocean Facts</h3>
-            <p id="player-meta" class="text-xs text-secondary">15 sec · 9:16 Vertical · Generated today</p>
-          </div>
-
-          <div class="flex space-x-3 pt-2">
-            <a id="player-download-btn" href="#" target="_blank" download class="flex-1 bg-[#181B21] border border-custom hover:border-gray-500 text-white text-xs font-semibold py-3 rounded-xl flex items-center justify-center transition">
-              <i class="fa-solid fa-download mr-2"></i> Download MP4
-            </a>
-            <button onclick="shareCurrentVideo()" class="flex-1 bg-[#181B21] border border-custom hover:border-gray-500 text-white text-xs font-semibold py-3 rounded-xl flex items-center justify-center transition">
-              <i class="fa-solid fa-share-nodes mr-2"></i> Share
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 5. CREDIT TOP-UP MODAL -->
-    <div id="modal-credits" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-      <div class="surface border border-custom max-w-md w-full rounded-2xl p-6 shadow-2xl relative space-y-4">
-        <button onclick="closeCreditModal()" class="absolute top-5 right-5 text-gray-400 hover:text-white text-lg">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-        <h3 class="text-xl font-bold text-white">Keep creating.</h3>
-        <p class="text-xs text-secondary">Choose a credit pack to fuel your video studio</p>
-
-        <div class="space-y-3 pt-2">
-          <div onclick="buyPack(100, '$10')" class="surface-elevated border border-custom p-4 rounded-xl flex justify-between items-center cursor-pointer hover:border-violet-500 transition">
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider pt-2">Credit Packages</h3>
+        <div class="space-y-3">
+          <div onclick="buyCreditPack(100, '$10')" class="bg-[#101218] border custom-border custom-border-hover p-4 rounded-xl flex justify-between items-center cursor-pointer transition-base">
             <div>
               <span class="font-bold text-sm text-white block">100 Credits</span>
               <span class="text-xs text-secondary">10 Shorts or 2 Long Videos</span>
@@ -299,46 +507,164 @@
             <span class="font-bold text-white">$10</span>
           </div>
 
-          <div onclick="buyPack(250, '$20')" class="surface-elevated border border-violet-500 p-4 rounded-xl flex justify-between items-center cursor-pointer hover:shadow-lg hover:shadow-purple-900/20 transition">
+          <div onclick="buyCreditPack(250, '$20')" class="bg-[#101218] border border-primary p-4 rounded-xl flex justify-between items-center cursor-pointer transition-base shadow-lg shadow-purple-950/20">
             <div>
               <div class="flex items-center space-x-2">
                 <span class="font-bold text-sm text-white">250 Credits</span>
-                <span class="text-[10px] bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded font-bold">★ Most Popular</span>
+                <span class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded font-bold">★ Most Popular</span>
               </div>
               <span class="text-xs text-secondary">25 Shorts or 5 Long Videos</span>
             </div>
-            <span class="font-bold text-violet-400">$20</span>
+            <span class="font-bold text-primary">$20</span>
           </div>
 
-          <div onclick="buyPack(700, '$50')" class="surface-elevated border border-custom p-4 rounded-xl flex justify-between items-center cursor-pointer hover:border-violet-500 transition">
+          <div onclick="buyCreditPack(750, '$50')" class="bg-[#101218] border custom-border custom-border-hover p-4 rounded-xl flex justify-between items-center cursor-pointer transition-base">
             <div>
-              <span class="font-bold text-sm text-white block">700 Credits</span>
-              <span class="text-xs text-secondary">70 Shorts or 14 Long Videos</span>
+              <span class="font-bold text-sm text-white block">750 Credits</span>
+              <span class="text-xs text-secondary">75 Shorts or 15 Long Videos</span>
             </div>
             <span class="font-bold text-white">$50</span>
           </div>
         </div>
       </div>
+
+      <!-- ---------------------------------------- -->
+      <!-- VIEW F: PROJECTS & TEMPLATES -->
+      <!-- ---------------------------------------- -->
+      <div id="section-projects" class="hidden space-y-4">
+        <h2 class="text-xl font-bold text-white">Projects Workspace</h2>
+        <p class="text-xs text-secondary">Organize scripts and generated assets into projects</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+          <div class="bg-[#101218] border custom-border p-5 rounded-xl space-y-2">
+            <h4 class="font-bold text-sm text-white">Health & Fitness Series</h4>
+            <p class="text-xs text-secondary">3 Videos · Last modified today</p>
+          </div>
+          <div class="bg-[#101218] border custom-border p-5 rounded-xl space-y-2">
+            <h4 class="font-bold text-sm text-white">AI Technology Explainers</h4>
+            <p class="text-xs text-secondary">5 Videos · Last modified 2 days ago</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="section-templates" class="hidden space-y-4">
+        <h2 class="text-xl font-bold text-white">Cinematic Templates</h2>
+        <p class="text-xs text-secondary">Start with proven high-retention frameworks</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
+          <div onclick="useTemplate('Top 5 Surprising Facts That Will Blow Your Mind')" class="bg-[#101218] border custom-border custom-border-hover p-5 rounded-xl cursor-pointer space-y-2 transition-base">
+            <span class="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">Social Viral</span>
+            <h4 class="font-bold text-sm text-white">Top 5 Mind-Blowing Facts</h4>
+            <p class="text-xs text-secondary">Fast-paced 15-second hook & quick facts structure.</p>
+          </div>
+          <div onclick="useTemplate('How To Master Any Skill in 30 Days')" class="bg-[#101218] border custom-border custom-border-hover p-5 rounded-xl cursor-pointer space-y-2 transition-base">
+            <span class="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">Educational</span>
+            <h4 class="font-bold text-sm text-white">Master Any Skill in 30 Days</h4>
+            <p class="text-xs text-secondary">Clear step-by-step tutorial format with cinematic b-roll.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------------------------------------- -->
+      <!-- VIEW G: SETTINGS -->
+      <!-- ---------------------------------------- -->
+      <div id="section-settings" class="hidden max-w-xl mx-auto space-y-6">
+        <h2 class="text-xl font-bold text-white">Studio Settings</h2>
+        <div class="bg-[#101218] border custom-border rounded-2xl p-6 space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-secondary mb-1">Creator Name</label>
+            <input id="settings-name" type="text" readonly class="w-full bg-[#08090D] border custom-border rounded-xl px-3.5 py-2.5 text-sm text-white" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-secondary mb-1">Email Address</label>
+            <input id="settings-email" type="text" readonly class="w-full bg-[#08090D] border custom-border rounded-xl px-3.5 py-2.5 text-sm text-white" />
+          </div>
+          <div class="pt-2">
+            <button onclick="openForgotPasswordModal()" class="text-xs text-primary hover:text-primary-hover font-semibold">Change Password →</button>
+          </div>
+          <div class="pt-4 border-t custom-border">
+            <button onclick="logout()" class="w-full bg-error/10 hover:bg-error/20 border border-error/30 text-error font-semibold py-2.5 rounded-xl transition-base text-xs">
+              Sign Out of Studio
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ========================================== -->
+    <!-- 5. MOBILE BOTTOM NAVIGATION (FIXED) -->
+    <!-- ========================================== -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 glass-nav border-t custom-border px-3 py-2 flex justify-around items-center z-40">
+      <button onclick="navigateTo('dashboard')" id="mob-dashboard" class="flex flex-col items-center p-2 text-primary transition-base">
+        <i class="fa-solid fa-house text-base mb-1"></i>
+        <span class="text-[10px] font-medium">Home</span>
+      </button>
+
+      <button onclick="navigateTo('create-short')" id="mob-create" class="flex flex-col items-center p-2 text-secondary hover:text-white transition-base">
+        <i class="fa-solid fa-wand-magic-sparkles text-base mb-1"></i>
+        <span class="text-[10px] font-medium">Create</span>
+      </button>
+
+      <button onclick="navigateTo('my-videos')" id="mob-videos" class="flex flex-col items-center p-2 text-secondary hover:text-white transition-base">
+        <i class="fa-solid fa-play text-base mb-1"></i>
+        <span class="text-[10px] font-medium">Videos</span>
+      </button>
+
+      <button onclick="navigateTo('credits')" id="mob-credits" class="flex flex-col items-center p-2 text-secondary hover:text-white transition-base">
+        <i class="fa-solid fa-coins text-base mb-1"></i>
+        <span class="text-[10px] font-medium">Credits</span>
+      </button>
+
+      <button onclick="navigateTo('settings')" id="mob-settings" class="flex flex-col items-center p-2 text-secondary hover:text-white transition-base">
+        <i class="fa-solid fa-user text-base mb-1"></i>
+        <span class="text-[10px] font-medium">Profile</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 6. VIDEO PLAYER MODAL -->
+  <!-- ========================================== -->
+  <div id="modal-player" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#101218] border custom-border max-w-2xl w-full rounded-2xl overflow-hidden shadow-2xl relative">
+      <button onclick="closePlayer()" class="absolute top-4 right-4 text-secondary hover:text-white z-10 bg-black/60 w-8 h-8 rounded-full flex items-center justify-center transition-base">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+
+      <div class="bg-black aspect-video flex items-center justify-center relative">
+        <video id="player-video" controls class="w-full h-full object-contain"></video>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <div>
+          <h3 id="player-title" class="text-base font-bold text-white mb-1 truncate">Video Title</h3>
+          <p id="player-meta" class="text-xs text-secondary">15 sec · 9:16 Vertical · Generated today</p>
+        </div>
+
+        <div class="flex space-x-3 pt-2">
+          <a id="player-download-btn" href="#" target="_blank" download class="flex-1 bg-primary hover:bg-primary-hover text-white text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center transition-base shadow-lg shadow-purple-950/40">
+            <i class="fa-solid fa-download mr-2"></i> Download MP4
+          </a>
+          <button onclick="shareCurrentVideo()" class="bg-[#151821] hover:bg-[#1e232f] border custom-border text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-base">
+            <i class="fa-solid fa-share-nodes"></i>
+          </button>
+        </div>
+      </div>
     </div>
+  </div>
 
-  </main>
-
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT CLIENT ENGINE -->
+  <!-- ========================================== -->
   <script>
-    let authToken = localStorage.getItem('auth_token') || null;
+    let authToken = localStorage.getItem('auth_token') || '';
     let currentUser = null;
-    let currentWallet = 250;
+    let currentWallet = 0;
+    let currentVideos = [];
     let isRegisterMode = false;
-    let activeCreateType = 'short';
-    let selectedDuration = 15;
-    let selectedStyle = 'cinematic';
-
-    document.addEventListener('DOMContentLoaded', () => {
-      if (authToken) {
-        verifySession();
-      } else {
-        showAuth();
-      }
-    });
+    let selectedDurationShort = 15;
+    let selectedDurationLong = 8;
+    let selectedStyleVal = 'cinematic';
+    let currentActiveVideo = null;
 
     async function apiRequest(endpoint, options = {}) {
       const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
@@ -347,45 +673,25 @@
       return res.json();
     }
 
-    async function verifySession() {
-      try {
-        const wallet = await apiRequest('/api/credits');
-        const balance = wallet.balance !== undefined ? wallet.balance : wallet.data?.balance;
-        if (balance !== undefined && !wallet.error) {
-          currentWallet = balance;
-          document.getElementById('credit-count').innerText = currentWallet;
-          document.getElementById('credit-badge').classList.remove('hidden');
-          document.getElementById('credit-badge').classList.add('flex');
-          document.getElementById('btn-logout').classList.remove('hidden');
-          showDashboard();
-          loadUserVideos();
-        } else {
-          logout();
-        }
-      } catch (_) {
-        logout();
-      }
-    }
-
-    function showAuth() {
-      document.getElementById('view-auth').classList.remove('hidden');
-      document.getElementById('view-dashboard').classList.add('hidden');
-      document.getElementById('credit-badge').classList.add('hidden');
-      document.getElementById('btn-logout').classList.add('hidden');
-    }
-
-    function showDashboard() {
-      document.getElementById('view-auth').classList.add('hidden');
-      document.getElementById('view-dashboard').classList.remove('hidden');
-    }
-
+    // AUTH FUNCTIONS
     function toggleAuthMode() {
       isRegisterMode = !isRegisterMode;
-      document.getElementById('auth-title').innerText = isRegisterMode ? 'Create Studio Account' : 'Turn an idea into a video.';
-      document.getElementById('auth-subtitle').innerText = isRegisterMode ? 'Sign up and get 50 Free Credits' : 'Sign in to craft cinematic AI videos in minutes';
-      document.getElementById('auth-submit-btn').innerText = isRegisterMode ? 'Sign Up & Get 50 Credits' : 'Enter Studio';
-      document.getElementById('field-name').classList.toggle('hidden', !isRegisterMode);
-      document.getElementById('auth-toggle-btn').innerText = isRegisterMode ? 'Already have an account? Log In' : "New creator? Create an account (50 Signup Credits)";
+      document.getElementById('auth-heading').innerText = isRegisterMode ? 'Create Studio Account' : 'Welcome back';
+      document.getElementById('auth-subheading').innerText = isRegisterMode ? 'Get started with free credits' : 'Sign in to craft cinematic AI videos in minutes';
+      document.getElementById('auth-submit-btn').innerText = isRegisterMode ? 'Sign Up & Get 50 Credits' : 'Log In';
+      document.getElementById('auth-toggle-btn').innerHTML = isRegisterMode 
+        ? 'Already have an account? <span class="text-primary font-semibold">Log In</span>' 
+        : 'Don\'t have an account? <span class="text-primary font-semibold">Create account (50 Credits)</span>';
+      
+      const fieldName = document.getElementById('field-name');
+      const linkForgot = document.getElementById('link-forgot-pwd');
+      if (isRegisterMode) {
+        fieldName.classList.remove('hidden');
+        linkForgot.classList.add('hidden');
+      } else {
+        fieldName.classList.add('hidden');
+        linkForgot.classList.remove('hidden');
+      }
     }
 
     async function handleAuth(e) {
@@ -407,32 +713,28 @@
         if (token) {
           authToken = token;
           localStorage.setItem('auth_token', authToken);
-          currentUser = user || { name: name || 'Creator' };
-          document.getElementById('user-name').innerText = currentUser.name;
-          document.getElementById('greeting-text').innerText = `Good morning, ${currentUser.name}`;
-          verifySession();
+          currentUser = user || { name: name || 'Creator', email };
+          initApp();
         } else {
           errBox.innerText = res.error?.message || res.message || 'Authentication failed.';
           errBox.classList.remove('hidden');
         }
-      } catch (err) {
+      } catch (_) {
         errBox.innerText = 'Network connection failed.';
         errBox.classList.remove('hidden');
       }
     }
 
     function logout() {
+      authToken = '';
       localStorage.removeItem('auth_token');
-      authToken = null;
-      showAuth();
+      document.getElementById('view-auth').classList.remove('hidden');
     }
 
+    // FORGOT PASSWORD
     function openForgotPasswordModal() {
       document.getElementById('modal-forgot-pwd').classList.remove('hidden');
-      document.getElementById('forgot-alert').classList.add('hidden');
-      document.getElementById('forgot-email').value = '';
     }
-
     function closeForgotPasswordModal() {
       document.getElementById('modal-forgot-pwd').classList.add('hidden');
     }
@@ -440,221 +742,157 @@
     async function handleForgotPassword(e) {
       e.preventDefault();
       const email = document.getElementById('forgot-email').value.trim();
-      const alertBox = document.getElementById('forgot-alert');
-      const btn = document.getElementById('btn-forgot-submit');
-      
-      btn.innerText = 'Sending link...';
-      btn.disabled = true;
+      const errBox = document.getElementById('forgot-error');
+      const succBox = document.getElementById('forgot-success');
+      errBox.classList.add('hidden');
+      succBox.classList.add('hidden');
 
       try {
-        const res = await apiRequest('/api/auth/forgot-password', {
-          method: 'POST',
-          body: JSON.stringify({ email })
-        });
-        
-        alertBox.innerText = res.message || 'If an account exists for this email, a password reset link has been sent.';
-        alertBox.className = 'p-3.5 rounded-xl text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-400';
-        alertBox.classList.remove('hidden');
-        document.getElementById('forgot-form').classList.add('hidden');
-      } catch (err) {
-        alertBox.innerText = 'Unable to send reset email. Please try again.';
-        alertBox.className = 'p-3.5 rounded-xl text-xs bg-red-500/10 border border-red-500/30 text-red-400';
-        alertBox.classList.remove('hidden');
-      } finally {
-        btn.innerText = 'Send Reset Link';
-        btn.disabled = false;
+        const res = await apiRequest('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+        succBox.innerText = res.message || 'If an account exists, a secure reset link has been dispatched.';
+        succBox.classList.remove('hidden');
+      } catch (_) {
+        errBox.innerText = 'Unable to dispatch reset request.';
+        errBox.classList.remove('hidden');
       }
     }
 
-    function openCreditModal() {
-      document.getElementById('modal-credits').classList.remove('hidden');
-    }
-
-    function closeCreditModal() {
-      document.getElementById('modal-credits').classList.add('hidden');
-    }
-
-    function buyPack(credits, price) {
-      alert(`Google Play / In-App Billing initiated for ${credits} Credits (${price}).`);
-      closeCreditModal();
-    }
-
-    function openCreateModal(type) {
-      activeCreateType = type;
-      document.getElementById('modal-create').classList.remove('hidden');
-      document.getElementById('modal-title').innerText = type === 'short' ? 'Create Short' : 'Create Long Video';
-      document.getElementById('modal-subtitle').innerText = type === 'short' ? 'Tell us what you want to create.' : 'What story do you want to tell?';
-
-      const durationBox = document.getElementById('duration-buttons');
-      durationBox.innerHTML = '';
-
-      if (type === 'short') {
-        selectedDuration = 15;
-        [15, 30, 60].forEach(sec => {
-          const cost = sec === 15 ? 10 : (sec === 30 ? 20 : 35);
-          durationBox.innerHTML += `
-            <button type="button" onclick="selectDuration(${sec}, ${cost})" id="dur-${sec}" class="dur-btn surface-elevated border ${sec === 15 ? 'border-violet-500' : 'border-custom'} py-2.5 rounded-xl text-center">
-              <span class="block text-xs font-bold text-white">${sec}s</span>
-              <span class="text-[10px] text-violet-400">${cost} cr</span>
-            </button>
-          `;
-        });
-      } else {
-        selectedDuration = 8;
-        [8, 10, 15, 20, 30].forEach(min => {
-          const cost = min === 8 ? 50 : (min === 10 ? 55 : (min === 15 ? 65 : (min === 20 ? 75 : 90)));
-          durationBox.innerHTML += `
-            <button type="button" onclick="selectDuration(${min}, ${cost})" id="dur-${min}" class="dur-btn surface-elevated border ${min === 8 ? 'border-indigo-500' : 'border-custom'} py-2.5 rounded-xl text-center">
-              <span class="block text-xs font-bold text-white">${min}m</span>
-              <span class="text-[10px] text-indigo-400">${cost} cr</span>
-            </button>
-          `;
-        });
-      }
-      updateSummary();
-    }
-
-    function closeCreateModal() {
-      document.getElementById('modal-create').classList.add('hidden');
-    }
-
-    function selectDuration(dur, cost) {
-      selectedDuration = dur;
-      document.querySelectorAll('.dur-btn').forEach(b => {
-        b.classList.remove('border-violet-500', 'border-indigo-500');
-        b.classList.add('border-custom');
+    // NAVIGATION
+    function navigateTo(viewId) {
+      const views = ['dashboard', 'create-short', 'create-long', 'my-videos', 'credits', 'projects', 'templates', 'settings'];
+      views.forEach(v => {
+        const el = document.getElementById(`section-${v}`);
+        if (el) el.classList.add('hidden');
+        const navEl = document.getElementById(`nav-${v}`);
+        if (navEl) {
+          navEl.classList.remove('nav-item-active');
+          navEl.classList.add('text-secondary');
+        }
+        const mobEl = document.getElementById(`mob-${v}`);
+        if (mobEl) {
+          mobEl.classList.remove('text-primary');
+          mobEl.classList.add('text-secondary');
+        }
       });
-      const activeBtn = document.getElementById(`dur-${dur}`);
-      if (activeBtn) {
-        activeBtn.classList.remove('border-custom');
-        activeBtn.classList.add(activeCreateType === 'short' ? 'border-violet-500' : 'border-indigo-500');
+
+      const activeSection = document.getElementById(`section-${viewId}`);
+      if (activeSection) activeSection.classList.remove('hidden');
+
+      const activeNav = document.getElementById(`nav-${viewId}`);
+      if (activeNav) {
+        activeNav.classList.add('nav-item-active');
+        activeNav.classList.remove('text-secondary');
       }
-      updateSummary();
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function selectDuration(type, dur) {
+      if (type === 'short') {
+        selectedDurationShort = dur;
+        [15, 30, 60].forEach(d => {
+          const btn = document.getElementById(`btn-short-${d}`);
+          if (btn) {
+            btn.className = d === dur 
+              ? 'duration-btn bg-[#101218] border border-primary text-white p-3 rounded-xl text-center transition-base' 
+              : 'duration-btn bg-[#101218] border custom-border text-secondary hover:text-white p-3 rounded-xl text-center transition-base';
+          }
+        });
+        const cost = dur === 15 ? 10 : (dur === 30 ? 20 : 35);
+        document.getElementById('short-summary-cost').innerText = `${cost} Credits`;
+        document.getElementById('short-summary-after').innerText = `After generation: ${Math.max(0, currentWallet - cost)} credits`;
+      } else {
+        selectedDurationLong = dur;
+        [8, 10, 15, 20, 30].forEach(d => {
+          const btn = document.getElementById(`btn-long-${d}`);
+          if (btn) {
+            btn.className = d === dur 
+              ? 'duration-btn bg-[#101218] border border-primary text-white p-2.5 rounded-xl text-center transition-base' 
+              : 'duration-btn bg-[#101218] border custom-border text-secondary hover:text-white p-2.5 rounded-xl text-center transition-base';
+          }
+        });
+        const cost = dur === 8 ? 50 : (dur === 10 ? 55 : (dur === 15 ? 65 : (dur === 20 ? 75 : 90)));
+        document.getElementById('long-summary-cost').innerText = `${cost} Credits`;
+        document.getElementById('long-summary-after').innerText = `After generation: ${Math.max(0, currentWallet - cost)} credits`;
+      }
     }
 
     function selectStyle(style) {
-      selectedStyle = style;
-      document.querySelectorAll('.style-btn').forEach(b => {
-        b.classList.remove('border-violet-500', 'text-white');
-        b.classList.add('border-custom', 'text-secondary');
+      selectedStyleVal = style;
+      ['cinematic', 'documentary', 'realistic'].forEach(s => {
+        const btn = document.getElementById(`style-${s}`);
+        if (btn) {
+          btn.className = s === style
+            ? 'style-btn bg-[#101218] border border-primary text-white py-2.5 px-3 rounded-xl text-xs font-semibold transition-base'
+            : 'style-btn bg-[#101218] border custom-border text-secondary hover:text-white py-2.5 px-3 rounded-xl text-xs font-semibold transition-base';
+        }
       });
-      const active = document.getElementById(`style-${style}`);
-      if (active) {
-        active.classList.remove('border-custom', 'text-secondary');
-        active.classList.add('border-violet-500', 'text-white');
-      }
     }
 
-    function updateSummary() {
-      const isShort = activeCreateType === 'short';
-      let cost = 10;
-      if (isShort) {
-        cost = selectedDuration <= 20 ? 10 : (selectedDuration <= 40 ? 20 : 35);
-      } else {
-        cost = selectedDuration === 8 ? 50 : (selectedDuration === 10 ? 55 : (selectedDuration === 15 ? 65 : (selectedDuration === 20 ? 75 : 90)));
-      }
-
-      document.getElementById('summary-duration').innerText = isShort ? `${selectedDuration} sec · 9:16 Vertical` : `${selectedDuration} min · 16:9 Landscape`;
-      document.getElementById('summary-credits').innerText = `${cost} credits`;
-      document.getElementById('summary-after').innerText = `${Math.max(0, currentWallet - cost)} credits`;
+    function useTemplate(topic) {
+      document.getElementById('prompt-short').value = topic;
+      navigateTo('create-short');
     }
 
-    async function handleCreateVideo(e) {
+    // CREATE VIDEO SUBMISSION
+    async function handleCreateVideoSubmit(e, type) {
       e.preventDefault();
-      const topic = document.getElementById('create-topic').value.trim();
+      const promptInput = type === 'short' ? document.getElementById('prompt-short') : document.getElementById('prompt-long');
+      const topic = promptInput.value.trim();
       if (!topic) return;
+
+      const duration = type === 'short' ? selectedDurationShort : selectedDurationLong;
+      const submitBtn = type === 'short' ? document.getElementById('btn-submit-short') : document.getElementById('btn-submit-long');
+      
+      submitBtn.innerText = 'Creating Blueprint...';
+      submitBtn.disabled = true;
 
       const payload = {
         topic,
-        videoType: activeCreateType,
-        style: selectedStyle,
-        ...(activeCreateType === 'short' ? { durationSeconds: selectedDuration } : { durationMinutes: selectedDuration })
+        videoType: type,
+        style: selectedStyleVal,
+        ...(type === 'short' ? { durationSeconds: duration } : { durationMinutes: duration })
       };
-
-      const btn = document.getElementById('btn-generate-submit');
-      btn.innerText = 'Creating Blueprint...';
-      btn.disabled = true;
 
       try {
         const res = await apiRequest('/api/videos/create', { method: 'POST', body: JSON.stringify(payload) });
         if (res.jobId || res.videoId || res.success) {
-          closeCreateModal();
-          verifySession();
+          promptInput.value = '';
+          navigateTo('dashboard');
           loadUserVideos();
+          verifySession();
         } else {
-          alert(res.error?.message || res.message || 'Generation failed.');
+          alert(res.error?.message || res.message || 'Generation request failed.');
         }
-      } catch (err) {
-        alert('Network request failed. Please check connection and try again.');
+      } catch (_) {
+        alert('Network request failed. Please check connection.');
       } finally {
-        btn.innerText = 'GENERATE VIDEO →';
-        btn.disabled = false;
+        submitBtn.innerText = type === 'short' ? 'Generate Short →' : 'Generate Long Video →';
+        submitBtn.disabled = false;
       }
     }
 
+    // LOAD VIDEOS
     async function loadUserVideos() {
       try {
         const res = await apiRequest('/api/videos');
-        const grid = document.getElementById('video-grid');
-        const empty = document.getElementById('video-empty');
-        const banner = document.getElementById('live-generation-banner');
-        const videoList = res.videos || res.data || [];
+        currentVideos = res.videos || res.data || [];
+        renderVideos();
 
-        const activeJob = videoList.find(v => v.status === 'generating' || v.status === 'queued' || v.status === 'processing' || v.status === 'planning');
-
+        // Check if active generation in progress
+        const activeJob = currentVideos.find(v => v.status === 'generating' || v.status === 'queued' || v.status === 'processing' || v.status === 'planning');
+        const banner = document.getElementById('dashboard-gen-banner');
+        
         if (activeJob && banner) {
           banner.classList.remove('hidden');
-          document.getElementById('live-gen-title').innerText = activeJob.title;
+          document.getElementById('dash-gen-title').innerText = activeJob.title;
           const stepText = activeJob.currentStep || 'Directing & rendering scenes with AI visual engine...';
-          document.getElementById('live-gen-step').innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2 text-violet-400"></i> ${stepText}`;
+          document.getElementById('dash-gen-step').innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2 text-primary"></i> ${stepText}`;
           const pct = Math.max(15, activeJob.progress || 25);
-          document.getElementById('live-gen-percent').innerText = `${pct}%`;
-          document.getElementById('live-gen-bar').style.width = `${pct}%`;
+          document.getElementById('dash-gen-percent').innerText = `${pct}%`;
+          document.getElementById('dash-gen-bar').style.width = `${pct}%`;
         } else if (banner) {
           banner.classList.add('hidden');
-        }
-
-        if (Array.isArray(videoList) && videoList.length > 0) {
-          empty.classList.add('hidden');
-          grid.innerHTML = videoList.map(v => {
-            const isReady = v.status === 'completed';
-            const isGenerating = v.status === 'generating' || v.status === 'queued' || v.status === 'processing' || v.status === 'planning';
-            const durationText = v.durationSeconds >= 60 ? `${Math.floor(v.durationSeconds/60)}:${v.durationSeconds%60}` : `00:${v.durationSeconds}`;
-            const pct = Math.max(10, v.progress || 25);
-            const stepName = v.currentStep || 'Rendering scenes...';
-
-            const statusHtml = isReady 
-              ? '<span class="text-emerald-400 text-xs font-semibold flex items-center"><i class="fa-solid fa-circle-check mr-1 text-[10px]"></i> Ready</span>' 
-              : `<span class="text-violet-400 text-xs font-semibold animate-pulse flex items-center"><i class="fa-solid fa-spinner fa-spin mr-1 text-[10px]"></i> Generating (${pct}%)</span>`;
-
-            return `
-              <div onclick="${isReady ? `openPlayer('${v.id}')` : ''}" class="surface border border-custom rounded-2xl p-3.5 ${isReady ? 'cursor-pointer hover:border-violet-500' : 'border-violet-500/40'} transition relative group">
-                <div class="aspect-video bg-[#181B21] rounded-xl overflow-hidden mb-3 relative flex items-center justify-center">
-                  ${isReady 
-                    ? (v.thumbnailUrl ? `<img src="${v.thumbnailUrl}" class="w-full h-full object-cover"/>` : '<span class="text-2xl opacity-40">🎬</span>')
-                    : `
-                      <div class="text-center p-3">
-                        <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-violet-500/20 border border-violet-500/50 mb-1.5">
-                          <i class="fa-solid fa-wand-magic-sparkles text-violet-400 text-xs animate-pulse"></i>
-                        </div>
-                        <div class="text-[11px] font-bold text-white">${pct}% Generating</div>
-                        <div class="text-[9px] text-violet-300 truncate max-w-[130px] opacity-80">${stepName}</div>
-                      </div>
-                    `
-                  }
-                  <span class="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] font-bold px-2 py-0.5 rounded">${durationText}</span>
-                </div>
-                <h4 class="font-bold text-sm text-white truncate mb-1">${v.title}</h4>
-                <div class="flex justify-between items-center text-xs">
-                  ${statusHtml}
-                  <span class="text-muted">${v.type === 'short' ? '9:16 Short' : '16:9 Long'}</span>
-                </div>
-              </div>
-            `;
-          }).join('');
-        } else {
-          grid.innerHTML = '';
-          empty.classList.remove('hidden');
         }
 
         if (activeJob) {
@@ -669,13 +907,109 @@
       } catch (_) {}
     }
 
+    function renderVideos(filterType = 'all') {
+      const recentGrid = document.getElementById('recent-video-grid');
+      const myVideosGrid = document.getElementById('my-videos-grid');
+      const recentEmpty = document.getElementById('recent-video-empty');
+
+      let list = [...currentVideos];
+      if (filterType !== 'all') {
+        if (filterType === 'short' || filterType === 'long') list = list.filter(v => v.type === filterType);
+        if (filterType === 'completed') list = list.filter(v => v.status === 'completed');
+      }
+
+      if (list.length === 0) {
+        if (recentEmpty) recentEmpty.classList.remove('hidden');
+        if (recentGrid) recentGrid.innerHTML = '';
+        if (myVideosGrid) myVideosGrid.innerHTML = '<div class="col-span-full text-center text-xs text-secondary py-12">No matching videos found.</div>';
+        return;
+      }
+
+      if (recentEmpty) recentEmpty.classList.add('hidden');
+
+      const cardsHtml = list.map(v => {
+        const isReady = v.status === 'completed';
+        const durationText = v.durationSeconds >= 60 ? `${Math.floor(v.durationSeconds/60)}:${String(v.durationSeconds%60).padStart(2,'0')}` : `00:${String(v.durationSeconds).padStart(2,'0')}`;
+        const pct = Math.max(10, v.progress || 25);
+
+        return `
+          <div onclick="${isReady ? `openPlayer('${v.id}')` : ''}" class="bg-[#101218] border custom-border ${isReady ? 'custom-border-hover cursor-pointer' : 'border-primary/40'} rounded-2xl p-3 space-y-3 transition-base group">
+            <div class="aspect-video bg-[#151821] rounded-xl overflow-hidden relative flex items-center justify-center">
+              ${isReady 
+                ? (v.thumbnailUrl ? `<img src="${v.thumbnailUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-base"/>` : '<i class="fa-solid fa-play text-xl text-primary opacity-60"></i>')
+                : `
+                  <div class="text-center p-3">
+                    <i class="fa-solid fa-wand-magic-sparkles text-primary text-base mb-1.5 animate-pulse"></i>
+                    <div class="text-[11px] font-bold text-white">${pct}% Generating</div>
+                  </div>
+                `
+              }
+              <span class="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-sm">${durationText}</span>
+            </div>
+            <div>
+              <h4 class="font-bold text-xs text-white truncate mb-1">${v.title}</h4>
+              <div class="flex justify-between items-center text-[11px]">
+                ${isReady 
+                  ? '<span class="text-success font-semibold flex items-center"><i class="fa-solid fa-circle-check mr-1 text-[9px]"></i> Ready</span>' 
+                  : `<span class="text-primary font-semibold animate-pulse flex items-center"><i class="fa-solid fa-spinner fa-spin mr-1 text-[9px]"></i> ${pct}%</span>`
+                }
+                <span class="text-secondary">${v.type === 'short' ? '9:16 Short' : '16:9 Long'}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (recentGrid) recentGrid.innerHTML = cardsHtml;
+      if (myVideosGrid) myVideosGrid.innerHTML = cardsHtml;
+    }
+
+    function filterVideos(filter) {
+      ['all', 'short', 'long', 'completed'].forEach(f => {
+        const btn = document.getElementById(`filter-${f}`);
+        if (btn) {
+          btn.className = f === filter
+            ? 'filter-btn bg-[#151821] border border-primary text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-base'
+            : 'filter-btn bg-[#151821] border custom-border text-secondary hover:text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-base';
+        }
+      });
+      renderVideos(filter);
+    }
+
+    function handleSearch(query) {
+      const q = query.toLowerCase();
+      const filtered = currentVideos.filter(v => v.title.toLowerCase().includes(q));
+      renderFilteredVideos(filtered);
+    }
+
+    function renderFilteredVideos(list) {
+      const myVideosGrid = document.getElementById('my-videos-grid');
+      if (myVideosGrid) {
+        myVideosGrid.innerHTML = list.map(v => {
+          const isReady = v.status === 'completed';
+          const durationText = v.durationSeconds >= 60 ? `${Math.floor(v.durationSeconds/60)}:${String(v.durationSeconds%60).padStart(2,'0')}` : `00:${String(v.durationSeconds).padStart(2,'0')}`;
+          return `
+            <div onclick="${isReady ? `openPlayer('${v.id}')` : ''}" class="bg-[#101218] border custom-border custom-border-hover rounded-2xl p-3 space-y-3 cursor-pointer transition-base">
+              <div class="aspect-video bg-[#151821] rounded-xl overflow-hidden relative flex items-center justify-center">
+                ${v.thumbnailUrl ? `<img src="${v.thumbnailUrl}" class="w-full h-full object-cover"/>` : '<i class="fa-solid fa-play text-xl text-primary"></i>'}
+                <span class="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] font-bold px-2 py-0.5 rounded">${durationText}</span>
+              </div>
+              <h4 class="font-bold text-xs text-white truncate">${v.title}</h4>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // PLAYER MODAL
     async function openPlayer(videoId) {
       try {
         const res = await apiRequest(`/api/videos/${videoId}`);
-        if (res.success && res.data) {
-          const v = res.data;
+        const v = res.video || res.data || currentVideos.find(x => x.id === videoId);
+        if (v) {
+          currentActiveVideo = v;
           document.getElementById('player-title').innerText = v.title;
-          document.getElementById('player-meta').innerText = `${v.durationSeconds}s · ${v.type === 'short' ? '9:16 Vertical' : '16:9 Landscape'} · Ready`;
+          document.getElementById('player-meta').innerText = `${v.durationSeconds} sec · ${v.type === 'short' ? '9:16 Vertical' : '16:9 Landscape'} · Generated today`;
           const videoEl = document.getElementById('player-video');
           videoEl.src = v.videoUrl || '';
           document.getElementById('player-download-btn').href = v.videoUrl || '#';
@@ -684,15 +1018,66 @@
       } catch (_) {}
     }
 
-    function closePlayerModal() {
-      document.getElementById('player-video').pause();
+    function closePlayer() {
+      const videoEl = document.getElementById('player-video');
+      videoEl.pause();
       document.getElementById('modal-player').classList.add('hidden');
     }
 
     function shareCurrentVideo() {
-      navigator.clipboard?.writeText(window.location.href);
-      alert('Video link copied to clipboard!');
+      if (currentActiveVideo && navigator.clipboard) {
+        navigator.clipboard.writeText(window.location.origin + (currentActiveVideo.videoUrl || ''));
+        alert('Video share link copied to clipboard!');
+      }
     }
+
+    // CREDITS & SESSION
+    async function verifySession() {
+      try {
+        const wallet = await apiRequest('/api/credits');
+        const balance = wallet.balance !== undefined ? wallet.balance : wallet.data?.balance;
+        if (balance !== undefined && !wallet.error) {
+          currentWallet = balance;
+          document.getElementById('header-credit-count').innerText = currentWallet.toLocaleString();
+          document.getElementById('wallet-balance-display').innerText = currentWallet.toLocaleString();
+          selectDuration('short', selectedDurationShort);
+          selectDuration('long', selectedDurationLong);
+        } else {
+          logout();
+        }
+      } catch (_) {
+        logout();
+      }
+    }
+
+    function buyCreditPack(amount, price) {
+      alert(`Payment integration initiated for ${amount} Credits (${price}).`);
+    }
+
+    function openCreditModal() {
+      navigateTo('credits');
+    }
+
+    async function initApp() {
+      if (!authToken) {
+        document.getElementById('view-auth').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('view-auth').classList.add('hidden');
+      
+      if (currentUser) {
+        document.getElementById('user-name-header').innerText = currentUser.name;
+        document.getElementById('user-avatar').innerText = currentUser.name.charAt(0).toUpperCase();
+        document.getElementById('settings-name').value = currentUser.name;
+        document.getElementById('settings-email').value = currentUser.email || '';
+      }
+
+      await verifySession();
+      await loadUserVideos();
+    }
+
+    // Start App
+    initApp();
   </script>
 </body>
 </html>
