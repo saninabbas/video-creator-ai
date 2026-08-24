@@ -5,16 +5,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,6 +34,7 @@ import com.aivideostudio.app.data.VideoRepository
 import com.aivideostudio.app.network.NetworkResult
 import com.aivideostudio.app.network.models.VideoDto
 import com.aivideostudio.app.ui.components.CreditBadge
+import com.aivideostudio.app.ui.components.CreditPackageCard
 import com.aivideostudio.app.ui.components.VideoCard
 import com.aivideostudio.app.ui.theme.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,10 +42,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class HomeUiState(
-    val userName: String = "Creator",
-    val credits: Int = 0,
+    val userName: String = "Sanin",
+    val credits: Int = 250,
     val recentVideos: List<VideoDto> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val showCreditModal: Boolean = false
 )
 
 class HomeViewModel(
@@ -56,21 +63,19 @@ class HomeViewModel(
             val user = authRepository.getCachedUser()
             val userName = user?.name ?: "Creator"
 
-            // Fetch live credits
-            var credits = user?.credits ?: 0
+            var credits = user?.credits ?: 250
             when (val credRes = creditRepository.getCredits()) {
                 is NetworkResult.Success -> credits = credRes.data.balance
                 else -> {}
             }
 
-            // Fetch recent videos
             var videos = emptyList<VideoDto>()
             when (val vidRes = videoRepository.getVideos(10)) {
                 is NetworkResult.Success -> videos = vidRes.data
                 else -> {}
             }
 
-            _uiState.value = HomeUiState(
+            _uiState.value = _uiState.value.copy(
                 userName = userName,
                 credits = credits,
                 recentVideos = videos,
@@ -78,8 +83,13 @@ class HomeViewModel(
             )
         }
     }
+
+    fun showCreditModal(show: Boolean) {
+        _uiState.value = _uiState.value.copy(showCreditModal = show)
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigateToCreateShort: () -> Unit,
@@ -95,27 +105,125 @@ fun HomeScreen(
         viewModel.loadData()
     }
 
+    // Credit Purchase Bottom Sheet
+    if (state.showCreditModal) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.showCreditModal(false) },
+            containerColor = SurfaceDark,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = TextMuted) }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 36.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = "Keep creating.",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "Choose a credit pack to fuel your video studio",
+                    fontSize = 14.sp,
+                    color = TextSecondary
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                CreditPackageCard(
+                    credits = 100,
+                    priceUsd = "$10",
+                    isPopular = false,
+                    onClick = { viewModel.showCreditModal(false) }
+                )
+                CreditPackageCard(
+                    credits = 250,
+                    priceUsd = "$20",
+                    isPopular = true,
+                    onClick = { viewModel.showCreditModal(false) }
+                )
+                CreditPackageCard(
+                    credits = 700,
+                    priceUsd = "$50",
+                    isPopular = false,
+                    onClick = { viewModel.showCreditModal(false) }
+                )
+                CreditPackageCard(
+                    credits = 1600,
+                    priceUsd = "$100",
+                    isPopular = false,
+                    onClick = { viewModel.showCreditModal(false) }
+                )
+            }
+        }
+    }
+
     Scaffold(
         containerColor = BackgroundDark,
         bottomBar = {
-            NavigationBar(containerColor = SurfaceDark) {
+            // 4-Destination Bottom Navigation
+            NavigationBar(
+                containerColor = SurfaceDark,
+                tonalElevation = 0.dp
+            ) {
                 NavigationBarItem(
                     selected = true,
                     onClick = {},
-                    icon = { Icon(Icons.Default.Movie, contentDescription = "Home") },
-                    label = { Text("Create") }
+                    icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                    label = { Text("Home", fontSize = 11.sp) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = ElectricViolet,
+                        selectedTextColor = ElectricViolet,
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextMuted,
+                        indicatorColor = SurfaceDark
+                    )
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onNavigateToCreateShort,
+                    icon = {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(ElectricViolet.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("✦", color = ElectricViolet, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    label = { Text("Create", fontSize = 11.sp, color = TextSecondary) },
+                    colors = NavigationBarItemDefaults.colors(
+                        unselectedIconColor = TextPrimary,
+                        unselectedTextColor = TextSecondary,
+                        indicatorColor = SurfaceDark
+                    )
                 )
                 NavigationBarItem(
                     selected = false,
                     onClick = onNavigateToMyVideos,
-                    icon = { Icon(Icons.Default.VideoLibrary, contentDescription = "My Videos") },
-                    label = { Text("My Videos") }
+                    icon = { Icon(Icons.Default.VideoLibrary, contentDescription = "Videos") },
+                    label = { Text("Videos", fontSize = 11.sp) },
+                    colors = NavigationBarItemDefaults.colors(
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextMuted,
+                        indicatorColor = SurfaceDark
+                    )
                 )
                 NavigationBarItem(
                     selected = false,
                     onClick = onNavigateToSettings,
                     icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                    label = { Text("Settings") }
+                    label = { Text("Settings", fontSize = 11.sp) },
+                    colors = NavigationBarItemDefaults.colors(
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextMuted,
+                        indicatorColor = SurfaceDark
+                    )
                 )
             }
         }
@@ -125,11 +233,11 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(8.dp))
-                // Header
+                Spacer(modifier = Modifier.height(10.dp))
+                // Top App Bar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -137,38 +245,51 @@ fun HomeScreen(
                 ) {
                     Column {
                         Text(
-                            text = "Hi, ${state.userName}",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "What do you want to create?",
+                            text = "Good morning, ${state.userName}",
                             fontSize = 14.sp,
                             color = TextSecondary
                         )
+                        Text(
+                            text = "Create something worth watching.",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
                     }
-                    CreditBadge(credits = state.credits, onClick = onNavigateToSettings)
+                    CreditBadge(
+                        credits = state.credits,
+                        onClick = { viewModel.showCreditModal(true) }
+                    )
                 }
             }
 
-            // Quick Create Cards
+            // Hero Headline
             item {
-                Text(
-                    text = "AI Video Generators",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
-                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Column {
+                    Text(
+                        text = "Turn an idea into a video.",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        lineHeight = 34.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Create cinematic AI videos in minutes.",
+                        fontSize = 14.sp,
+                        color = TextSecondary
+                    )
+                }
             }
 
+            // Hero Creation Card 1 — CREATE SHORT
             item {
-                // Short Video Card (Dominant)
                 Card(
                     onClick = onNavigateToCreateShort,
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = PrimaryPurple.copy(alpha = 0.25f)),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(PrimaryPurple)),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = CardGlowBorder),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -179,48 +300,51 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = PrimaryPurple,
-                                modifier = Modifier.padding(bottom = 6.dp)
-                            ) {
-                                Text(
-                                    text = "9:16 VERTICAL",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
                             Text(
-                                text = "Create Short / Reel",
+                                text = "✦",
+                                fontSize = 22.sp,
+                                color = ElectricViolet
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Create Short",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Vertical  ·  9:16",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = ElectricViolet
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "15s to 90s • TikTok, YouTube Shorts, Reels",
-                                fontSize = 13.sp,
-                                color = TextSecondary
+                                text = "15–60 seconds",
+                                fontSize = 12.sp,
+                                color = TextMuted
                             )
                         }
                         Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            tint = PrimaryPurpleLight,
-                            modifier = Modifier.size(32.dp)
+                            imageVector = Icons.Default.ArrowForward,
+                            contentDescription = "Create Short",
+                            tint = ElectricViolet,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
             }
 
+            // Hero Creation Card 2 — CREATE LONG
             item {
-                // Long Video Card
                 Card(
                     onClick = onNavigateToCreateLong,
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                    border = CardDefaults.outlinedCardBorder().copy(
+                        brush = androidx.compose.ui.graphics.SolidColor(BorderDark)
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -231,84 +355,100 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = SecondaryBlue,
-                                modifier = Modifier.padding(bottom = 6.dp)
-                            ) {
-                                Text(
-                                    text = "16:9 WIDESCREEN",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
                             Text(
-                                text = "Create Long Video",
+                                text = "▣",
+                                fontSize = 22.sp,
+                                color = SoftIndigo
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Create Long",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Landscape  ·  16:9",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = SoftIndigo
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "8 min to 30 min • Full YouTube Documentaries",
-                                fontSize = 13.sp,
-                                color = TextSecondary
+                                text = "8–30 minutes",
+                                fontSize = 12.sp,
+                                color = TextMuted
                             )
                         }
                         Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            tint = SecondaryBlue,
-                            modifier = Modifier.size(32.dp)
+                            imageVector = Icons.Default.ArrowForward,
+                            contentDescription = "Create Long",
+                            tint = SoftIndigo,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
             }
 
-            // Recent Videos
+            // Recent Videos Header
             item {
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Recent Videos",
-                        fontSize = 17.sp,
+                        text = "RECENT VIDEOS",
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        color = TextMuted,
+                        letterSpacing = 1.sp
                     )
-                    if (state.recentVideos.isNotEmpty()) {
-                        Text(
-                            text = "See All",
-                            fontSize = 14.sp,
-                            color = PrimaryPurpleLight,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.clickable { onNavigateToMyVideos() }
-                        )
-                    }
+                    Text(
+                        text = "View all →",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = ElectricViolet,
+                        modifier = Modifier.clickable { onNavigateToMyVideos() }
+                    )
                 }
             }
 
-            if (state.recentVideos.isEmpty() && !state.isLoading) {
+            // Recent Videos List
+            if (state.recentVideos.isEmpty()) {
                 item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 24.dp),
-                        contentAlignment = Alignment.Center
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = SurfaceDark,
+                        border = CardDefaults.outlinedCardBorder().copy(
+                            brush = androidx.compose.ui.graphics.SolidColor(BorderDark)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = "No videos created yet. Tap above to make your first video!",
-                            fontSize = 14.sp,
-                            color = TextMuted
-                        )
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No videos yet",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Choose a creation card above to craft your first AI video",
+                                fontSize = 13.sp,
+                                color = TextSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
                     }
                 }
             } else {
-                items(state.recentVideos) { video ->
+                items(state.recentVideos.take(3)) { video ->
                     VideoCard(
                         video = video,
                         onClick = { onNavigateToPlayer(video.id) }

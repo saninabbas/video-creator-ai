@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -14,6 +15,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +31,7 @@ import com.aivideostudio.app.network.NetworkResult
 import com.aivideostudio.app.network.models.CreditTransactionDto
 import com.aivideostudio.app.network.models.NotificationDto
 import com.aivideostudio.app.network.models.UserDto
+import com.aivideostudio.app.ui.components.CreditPackageCard
 import com.aivideostudio.app.ui.theme.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,7 +39,7 @@ import kotlinx.coroutines.launch
 
 data class SettingsUiState(
     val user: UserDto? = null,
-    val creditBalance: Int = 0,
+    val creditBalance: Int = 250,
     val transactions: List<CreditTransactionDto> = emptyList(),
     val notifications: List<NotificationDto> = emptyList(),
     val isLoggedOut: Boolean = false
@@ -52,7 +56,7 @@ class SettingsViewModel(
     fun loadData() {
         viewModelScope.launch {
             val user = authRepository.getCachedUser()
-            var balance = user?.credits ?: 0
+            var balance = user?.credits ?: 250
             var txs = emptyList<CreditTransactionDto>()
 
             when (val credRes = creditRepository.getCredits()) {
@@ -106,7 +110,7 @@ fun SettingsScreen(
         containerColor = BackgroundDark,
         topBar = {
             TopAppBar(
-                title = { Text("Profile & Settings", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
+                title = { Text("Studio Settings", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
@@ -124,78 +128,119 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
-                // Profile Card
+                Spacer(modifier = Modifier.height(4.dp))
+                // User Profile Card
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                    border = CardDefaults.outlinedCardBorder().copy(
+                        brush = androidx.compose.ui.graphics.SolidColor(BorderDark)
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier.padding(18.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryPurpleLight, modifier = Modifier.size(40.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(HeroGradient),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = (state.user?.name?.take(1) ?: "S").uppercase(),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
                         Spacer(modifier = Modifier.width(14.dp))
-                        Column {
-                            Text(state.user?.name ?: "Creator", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                            Text(state.user?.email ?: "", fontSize = 13.sp, color = TextSecondary)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(state.user?.name ?: "Creator", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text(state.user?.email ?: "creator@example.com", fontSize = 13.sp, color = TextSecondary)
                         }
                     }
                 }
             }
 
-            // Credits Balance Card
+            // Wallet & Credits Section
             item {
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = CardGlowBorder),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Text("Credit Balance", fontSize = 14.sp, color = TextSecondary)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("${state.creditBalance} Credits", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Short = 10 Credits • Long = 50 Credits", fontSize = 12.sp, color = TextMuted)
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "WALLET BALANCE",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextMuted,
+                            letterSpacing = 1.sp
+                        )
+                        Row(
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "${state.creditBalance}",
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "Credits available",
+                                fontSize = 14.sp,
+                                color = ElectricViolet,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                        }
                     }
                 }
             }
 
-            // Notifications
-            if (state.notifications.isNotEmpty()) {
-                item {
-                    Text("Recent Notifications", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                }
-                items(state.notifications) { notif ->
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Notifications, contentDescription = null, tint = PrimaryPurpleLight, modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(notif.title, fontWeight = FontWeight.SemiBold, color = TextPrimary, fontSize = 14.sp)
-                                Text(notif.message, color = TextSecondary, fontSize = 12.sp)
-                            }
-                        }
-                    }
+            // Credit Packs Catalog
+            item {
+                Text(
+                    text = "TOP UP CREDITS",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextMuted,
+                    letterSpacing = 1.sp
+                )
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CreditPackageCard(credits = 100, priceUsd = "$10", isPopular = false, onClick = {})
+                    CreditPackageCard(credits = 250, priceUsd = "$20", isPopular = true, onClick = {})
+                    CreditPackageCard(credits = 700, priceUsd = "$50", isPopular = false, onClick = {})
                 }
             }
 
             // Logout Button
             item {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 OutlinedButton(
                     onClick = { viewModel.logout(onLoggedOut) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = ErrorRed),
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                        brush = androidx.compose.ui.graphics.SolidColor(ErrorRed.copy(alpha = 0.5f))
+                    )
                 ) {
-                    Icon(Icons.Default.ExitToApp, contentDescription = null)
+                    Icon(Icons.Default.ExitToApp, contentDescription = "Sign Out", modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Log Out", fontWeight = FontWeight.SemiBold)
+                    Text("Sign Out", fontWeight = FontWeight.SemiBold)
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }

@@ -1,16 +1,37 @@
 package com.aivideostudio.app.ui.theme
 
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-val BackgroundDark = Color(0xFF0F1117)
-val SurfaceDark = Color(0xFF1A1D26)
-val SurfaceVariantDark = Color(0xFF242836)
-val PrimaryPurple = Color(0xFF7C3AED)
-val PrimaryPurpleLight = Color(0xFF8B5CF6)
-val SecondaryBlue = Color(0xFF3B82F6)
-val AccentGreen = Color(0xFF10B981)
+// Deep Charcoal Theme Colors (The content is the hero)
+val BackgroundDark = Color(0xFF0B0C0F)
+val SurfaceDark = Color(0xFF121419)
+val ElevatedSurface = Color(0xFF181B21)
+val BorderDark = Color(0xFF242832)
+
+// Typography Palette
+val TextPrimary = Color(0xFFF5F7FA)
+val TextSecondary = Color(0xFF9299A6)
+val TextMuted = Color(0xFF626977)
+
+// Brand Accents
+val ElectricViolet = Color(0xFF8B5CF6)
+val SoftIndigo = Color(0xFF6366F1)
+val EmeraldGreen = Color(0xFF22C55E)
+val AmberWarning = Color(0xFFF59E0B)
 val ErrorRed = Color(0xFFEF4444)
-val TextPrimary = Color(0xFFF9FAFB)
-val TextSecondary = Color(0xFF9CA3AF)
-val TextMuted = Color(0xFF6B7280)
-val BorderDark = Color(0xFF374151)
+
+// Backwards compatibility aliases
+val PrimaryPurple = ElectricViolet
+val PrimaryPurpleLight = Color(0xFFA78BFA)
+val SecondaryBlue = SoftIndigo
+val AccentGreen = EmeraldGreen
+val SurfaceVariantDark = ElevatedSurface
+
+// Gradients (Hero & Primary Creation only)
+val HeroGradient = Brush.linearGradient(
+    colors = listOf(ElectricViolet, SoftIndigo)
+)
+val CardGlowBorder = Brush.linearGradient(
+    colors = listOf(ElectricViolet.copy(alpha = 0.6f), SoftIndigo.copy(alpha = 0.2f))
+)

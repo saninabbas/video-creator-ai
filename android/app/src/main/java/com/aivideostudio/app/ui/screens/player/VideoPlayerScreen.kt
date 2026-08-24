@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -114,7 +115,6 @@ fun VideoPlayerScreen(
         viewModel.loadVideo(videoId)
     }
 
-    // Initialize ExoPlayer when video URL is available
     val fullVideoUrl = remember(state.video?.videoUrl) {
         val path = state.video?.videoUrl ?: ""
         if (path.startsWith("http")) path else "${BuildConfig.BASE_URL.removeSuffix("/")}$path"
@@ -139,7 +139,7 @@ fun VideoPlayerScreen(
         containerColor = BackgroundDark,
         topBar = {
             TopAppBar(
-                title = { Text("Video Ready", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
+                title = { Text("Studio Preview", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
@@ -151,7 +151,7 @@ fun VideoPlayerScreen(
     ) { padding ->
         if (state.isLoading) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = PrimaryPurple)
+                CircularProgressIndicator(color = ElectricViolet)
             }
         } else {
             val video = state.video
@@ -161,12 +161,12 @@ fun VideoPlayerScreen(
                     .padding(padding)
                     .verticalScroll(scrollState)
             ) {
-                // Video Player Container
+                // Video Player Container (Deep Black Cinematic Frame)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(if (video?.type == "short") 9f / 16f else 16f / 9f)
-                        .background(SurfaceDark),
+                        .aspectRatio(if (video?.type == "short") 0.65f else 1.77f)
+                        .background(Color.Black),
                     contentAlignment = Alignment.Center
                 ) {
                     exoPlayer?.let { player ->
@@ -179,6 +179,7 @@ fun VideoPlayerScreen(
                                         ViewGroup.LayoutParams.MATCH_PARENT
                                     )
                                     useController = true
+                                    setBackgroundColor(android.graphics.Color.BLACK)
                                 }
                             },
                             modifier = Modifier.fillMaxSize()
@@ -190,22 +191,24 @@ fun VideoPlayerScreen(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // Title
                     Text(
                         text = video?.title ?: "Untitled Video",
-                        fontSize = 20.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Metadata
+                    val sec = video?.durationSeconds?.toInt() ?: 0
+                    val durationStr = if (sec >= 60) "${sec / 60}m ${sec % 60}s" else "${sec}s"
+                    val aspectStr = if (video?.type == "short") "9:16 Vertical" else "16:9 Landscape"
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Text(
-                            text = if (video?.type == "short") "9:16 Short" else "16:9 Long Video",
-                            fontSize = 13.sp,
-                            color = TextSecondary
-                        )
-                        Text(text = "•", fontSize = 13.sp, color = TextMuted)
-                        Text(
-                            text = "${video?.durationSeconds?.toInt() ?: 0}s duration",
+                            text = "$durationStr  ·  $aspectStr  ·  Generated today",
                             fontSize = 13.sp,
                             color = TextSecondary
                         )
@@ -217,69 +220,76 @@ fun VideoPlayerScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Button(
+                            onClick = { downloadVideoUrl(context, fullVideoUrl) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = SurfaceDark)
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = "Download", tint = TextPrimary, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Download", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        }
+
+                        Button(
                             onClick = { shareVideoUrl(context, fullVideoUrl, video?.title) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp),
                             shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
-                            modifier = Modifier.weight(1f)
+                            colors = ButtonDefaults.buttonColors(containerColor = SurfaceDark)
                         ) {
-                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Share, contentDescription = "Share", tint = TextPrimary, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Share")
-                        }
-
-                        OutlinedButton(
-                            onClick = { downloadVideo(context, fullVideoUrl) },
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp), tint = TextPrimary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Download", color = TextPrimary)
+                            Text("Share", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         }
                     }
 
-                    // For Long Videos: Extract Shorts option
+                    // Secondary CTA (e.g. Create Shorts from Long Video)
                     if (video?.type == "long") {
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Repurpose into Shorts", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("Extract high-impact vertical moments for TikTok & Reels.", fontSize = 13.sp, color = TextSecondary)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                PrimaryButton(
-                                    text = "✂️ Extract Shorts Moments",
-                                    onClick = { viewModel.createShorts(videoId) },
-                                    containerColor = SecondaryBlue
-                                )
-                            }
-                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        PrimaryButton(
+                            text = "✦  Create Viral Shorts from This Video",
+                            onClick = { video.id.let { viewModel.createShorts(it) } },
+                            useGradient = true
+                        )
                     }
 
-                    // Scene breakdown if available
-                    video?.scenes?.let { scenes ->
-                        if (scenes.isNotEmpty()) {
-                            Text("Scenes Breakdown (${scenes.size} scenes)", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                            scenes.forEach { scene ->
-                                Card(
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-                                    modifier = Modifier.fillMaxWidth()
+                    // Extracted Viral Shorts section
+                    if (state.extractedMoments.isNotEmpty()) {
+                        Text(
+                            text = "EXTRACTED VIRAL SHORTS",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextMuted,
+                            letterSpacing = 1.sp
+                        )
+                        state.extractedMoments.forEach { moment ->
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = SurfaceDark,
+                                border = CardDefaults.outlinedCardBorder().copy(
+                                    brush = androidx.compose.ui.graphics.SolidColor(BorderDark)
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        Text("Scene ${scene.sceneNumber} (${scene.durationSeconds.toInt()}s)", fontWeight = FontWeight.SemiBold, color = PrimaryPurpleLight, fontSize = 13.sp)
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(scene.visualPrompt, fontSize = 13.sp, color = TextSecondary)
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(moment.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                        Text(moment.hookReason, fontSize = 12.sp, color = TextSecondary)
                                     }
+                                    Text("${moment.durationSeconds}s", fontSize = 12.sp, color = ElectricViolet, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
@@ -287,15 +297,19 @@ fun VideoPlayerScreen(
 }
 
 private fun shareVideoUrl(context: Context, url: String, title: String?) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
+    val sendIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_TEXT, "Check out this video created with AI Video Studio: $url")
+        putExtra(Intent.EXTRA_TITLE, title ?: "AI Video")
         type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, title ?: "AI Generated Video")
-        putExtra(Intent.EXTRA_TEXT, "Watch my AI video: $url")
     }
-    context.startActivity(Intent.createChooser(intent, "Share Video"))
+    val shareIntent = Intent.createChooser(sendIntent, "Share AI Video")
+    context.startActivity(shareIntent)
 }
 
-private fun downloadVideo(context: Context, url: String) {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-    context.startActivity(intent)
+private fun downloadVideoUrl(context: Context, url: String) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        context.startActivity(intent)
+    } catch (_: Exception) {}
 }
